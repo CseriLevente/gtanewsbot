@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import json
 import pathlib
+import re
 
 import pytest
 
@@ -39,12 +40,20 @@ SAMPLE = {
             "outlets": 2,
             "primary": "https://example.com/a",
             "primary_name": "Example",
+            "primary_domain": "example.com",
+            "primary_tier": 1,
+            "primary_wrapper": False,
             "published": 1756317600,
             "sources": [
+                # A real publisher URL: linked as-is.
                 {"name": "Example", "url": "https://example.com/a",
-                 "tier": 1, "wrapper": False},
-                {"name": "Aggregated", "url": "https://news.google.com/rss/articles/X",
-                 "tier": 2, "wrapper": True},
+                 "tier": 1, "wrapper": False, "domain": "example.com"},
+                # A wrapper from a recognised outlet: falls back to its homepage.
+                {"name": "Known Outlet", "url": "https://news.google.com/rss/articles/X",
+                 "tier": 2, "wrapper": True, "domain": "known.example"},
+                # A wrapper from an outlet not in the credibility list: no link.
+                {"name": "Unlisted Blog", "url": "https://news.google.com/rss/articles/Y",
+                 "tier": 4, "wrapper": True, "domain": "unlisted.example"},
             ],
         }
     ],
@@ -90,8 +99,35 @@ def test_non_ascii_survives_as_utf8(page: pathlib.Path) -> None:
     assert "\u00e2\u20ac" not in text  # the "â€" signature of cp1252 mojibake
 
 
-def test_aggregator_links_are_marked(page: pathlib.Path) -> None:
-    # The footer promises readers that an arrow marks an aggregator link.
+def test_never_emits_an_aggregator_href(page: pathlib.Path) -> None:
+    """
+    The invariant that matters most on this page.
+
+    Google News RSS links are opaque redirects that cannot be decoded, and
+    following one lands on consent.google.com from the EU. Passing one to a
+    reader produces a link that looks like it goes to the outlet named beside
+    it and does not. 88% of source chips came from that aggregator, so this is
+    the common path, not a corner case.
+    """
     html = page.read_text(encoding="utf-8")
-    assert 'data-wrapper="1"' in html
-    assert "2197" in html  # the ↗ glyph the CSS attaches to those chips
+    hrefs = re.findall(r'href="([^"]+)"', html)
+    assert hrefs, "page emitted no links at all"
+    assert not [u for u in hrefs if "news.google" in u]
+
+
+def test_recognised_outlet_falls_back_to_its_homepage(page: pathlib.Path) -> None:
+    html = page.read_text(encoding="utf-8")
+    assert 'href="https://known.example/"' in html
+    assert 'data-homepage="1"' in html  # marked, so it does not pose as the article
+
+
+def test_unlisted_outlet_is_named_but_not_linked(page: pathlib.Path) -> None:
+    html = page.read_text(encoding="utf-8")
+    assert "Unlisted Blog" in html, "the outlet must still be named"
+    assert 'href="https://unlisted.example/"' not in html
+    assert "chip-plain" in html
+
+
+def test_real_publisher_urls_are_still_linked_directly(page: pathlib.Path) -> None:
+    # The gate must not cost us the links we actually have.
+    assert 'href="https://example.com/a"' in page.read_text(encoding="utf-8")

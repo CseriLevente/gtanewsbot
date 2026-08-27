@@ -43,19 +43,62 @@ def esc(value) -> str:
     return html.escape(str(value or ""), quote=True)
 
 
+# Highest tier number we will still send a reader to the outlet's homepage for.
+# Above this the domain is not in the credibility list at all, and an unlabelled
+# homepage link to an outlet we cannot vouch for is worth less than a plain name.
+HOMEPAGE_TIER_MAX = 3
+
+
+def link_target(url: str, *, wrapper: bool, tier: int, domain: str) -> tuple[str, str]:
+    """
+    Decide where a source may point, and how to mark it.
+
+    Returns (href, marker_attr); an empty href means "render as text, not a link".
+
+    The rule exists because most items reach the bot through Google News, whose
+    RSS links are opaque redirects. They cannot be decoded -- the post-2024 blobs
+    carry no address -- and following one lands on consent.google.com from the EU,
+    so a reader without Google consent cookies gets a consent wall rather than the
+    article. Emitting such a URL is worse than emitting none: it looks like a link
+    to the outlet named beside it, and it is not one.
+
+    So, in order:
+      * a real publisher URL is linked as-is;
+      * a wrapper from an outlet we recognise falls back to that outlet's
+        homepage, marked as such, because it is honest and always resolves;
+      * anything else renders as plain text.
+    """
+    if url and not wrapper:
+        return url, ""
+    if domain and tier <= HOMEPAGE_TIER_MAX:
+        return "https://" + domain + "/", ' data-homepage="1"'
+    return "", ""
+
+
 def render_story(s: dict) -> str:
     label = LABELS.get(s["label"], "Report")
     cls = s["label"] if s["label"] in LABELS else "report"
 
     chips = []
     for src in s["sources"]:
-        wrapper = ' data-wrapper="1"' if src.get("wrapper") else ""
         tier_cls = " t1" if int(src.get("tier") or 9) == 1 else ""
-        chips.append(
-            '<li><a class="chip' + tier_cls + '" href="' + esc(src["url"]) + '"'
-            ' target="_blank" rel="noopener noreferrer"' + wrapper + '>'
-            + esc(src["name"]) + "</a></li>"
+        href, marker = link_target(
+            src.get("url") or "",
+            wrapper=bool(src.get("wrapper")),
+            tier=int(src.get("tier") or 9),
+            domain=(src.get("domain") or ""),
         )
+        if href:
+            chips.append(
+                '<li><a class="chip' + tier_cls + '" href="' + esc(href) + '"'
+                ' target="_blank" rel="noopener noreferrer"' + marker + '>'
+                + esc(src["name"]) + "</a></li>"
+            )
+        else:
+            # Named but not linked. The outlet still counts as corroboration,
+            # which is what the number on the left of the row is about.
+            chips.append('<li><span class="chip chip-plain' + tier_cls + '">'
+                         + esc(src["name"]) + "</span></li>")
     hidden = int(s["outlets"]) - len(s["sources"])
     if hidden > 0:
         chips.append('<li><span class="chip chip-more">+' + str(hidden)
@@ -70,6 +113,21 @@ def render_story(s: dict) -> str:
 
     plural = "outlets" if int(s["outlets"]) != 1 else "outlet"
 
+    # 65 of 90 stories currently have every source wrapped, so an unlinked
+    # headline is the common case here, not an edge case.
+    h_href, h_marker = link_target(
+        s.get("primary") or "",
+        wrapper=bool(s.get("primary_wrapper")),
+        tier=int(s.get("primary_tier") or 9),
+        domain=(s.get("primary_domain") or ""),
+    )
+    if h_href:
+        headline_html = ('<a href="' + esc(h_href) + '" target="_blank"'
+                         ' rel="noopener noreferrer"' + h_marker + ">"
+                         + esc(s["title"]) + "</a>")
+    else:
+        headline_html = esc(s["title"])
+
     return (
         '      <article class="story ' + cls + '">\n'
         '        <div class="rail">\n'
@@ -78,8 +136,7 @@ def render_story(s: dict) -> str:
         '          <span class="count-unit">' + plural + "</span>\n"
         "        </div>\n"
         '        <div class="body">\n'
-        "          <h2><a href=\"" + esc(s["primary"]) + '" target="_blank"'
-        ' rel="noopener noreferrer">' + esc(s["title"]) + "</a></h2>\n"
+        "          <h2>" + headline_html + "</h2>\n"
         '          <p class="meta"><span class="lede">' + esc(s["primary_name"])
         + "</span>" + time_html + "</p>\n"
         '          <ul class="sources">\n'
@@ -213,9 +270,16 @@ ul.sources {
   padding:.22rem .5rem; background:var(--chip); color:var(--chip-ink);
   border:1px solid transparent; text-decoration:none; border-radius:2px;
 }
-.chip:hover, .chip:focus-visible { border-color:var(--accent); color:var(--accent) }
+a.chip:hover, a.chip:focus-visible { border-color:var(--accent); color:var(--accent) }
 .chip.t1 { font-weight:600; color:var(--official) }
-.chip[data-wrapper="1"]::after { content:" \\2197"; opacity:.45 }
+/* Degree sign, not an arrow: this link goes to the outlet's front page, not to
+   the article, and it must not look like the real thing. */
+[data-homepage="1"]::after { content:" \\00B0"; opacity:.5 }
+h2 [data-homepage="1"]::after { font-size:.7em; vertical-align:.35em }
+/* An outlet we can name but not link. Deliberately inert: no pointer, no hover,
+   nothing that invites a click that would go nowhere. */
+.chip-plain { color:var(--ink-faint); background:transparent;
+  border:1px solid var(--rule-soft); cursor:default }
 .chip-more {
   color:var(--ink-faint); background:transparent; border:1px dashed var(--rule);
 }
@@ -277,9 +341,9 @@ def main() -> int:
         '    <p class="eyebrow">Leonida desk / automated wire</p>',
         "    <h1>Vice City <em>Wire</em></h1>",
         '    <p class="standfirst">Every GTA&nbsp;6 story our feeds carried today,'
-        " grouped by event and ranked by how many outlets ran it. Each headline links"
-        " to the outlet that carried it first; the chips beneath list everyone else"
-        " who ran the same story.</p>",
+        " grouped by event and ranked by how many outlets ran it. The chips beneath"
+        " each headline name every outlet that ran the same story &mdash; that count,"
+        " not any single report, is the thing worth reading.</p>",
         "  </header>",
         '  <div class="stats">',
         "    <span><b>" + str(d["total_stories"]) + "</b> stories</span>",
@@ -308,8 +372,11 @@ def main() -> int:
         "    <span>Compiled automatically from " + str(d["total_items"])
         + " articles across 10 feeds. Headlines and links belong to their"
         " publishers.</span>",
-        "    <span>An arrow marks an aggregator link, used where the publisher's own"
-        " URL could not be resolved.</span>",
+        "    <span>Most stories reach us through a news aggregator, whose links are"
+        " redirects rather than article addresses. We never pass one on: a"
+        " <b>&deg;</b> means the link goes to that outlet's front page rather than"
+        " to the article, and an outlet in grey is one we can name but not link."
+        " A named source you cannot click still counts as corroboration.</span>",
         "  </footer>",
         "</div>",
         "</body>",

@@ -22,8 +22,10 @@ naturally into today's digest instead of being replayed as three stale ones.
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
+import sys
 from dataclasses import dataclass, field
 
 from src import canonical, cluster, credibility, digest, discord_client, feeds, llm, storage
@@ -82,6 +84,8 @@ class RunReport:
     digest_reason: str = ""
     digest_items: int = 0
     digest_message_id: str | None = None
+    web_published: bool = False
+    web_reason: str = ""
     errors: list[str] = field(default_factory=list)
 
     def summary_lines(self) -> list[str]:
@@ -99,6 +103,9 @@ class RunReport:
                        f"(message {self.digest_message_id or 'n/a'})")
         else:
             out.append(f"Digest: not posted — {self.digest_reason}")
+        if self.web_reason:
+            state = "PUBLISHED" if self.web_published else "not published"
+            out.append(f"Web edition: {state} — {self.web_reason}")
         for e in self.errors:
             out.append(f"ERROR: {e}")
         return out
@@ -537,6 +544,25 @@ async def run_once(conn, cfg: dict, *, dry_run: bool = False, force_digest: bool
         report.errors.append(f"digest: {exc}")
         report.digest_reason = f"error: {exc}"
 
+
+    # Refresh the public web edition, but only once the digest has actually gone
+    # out. Deliberately tied to the digest rather than to every 15-minute cycle:
+    # the page's own "compiled <time>" line is a once-a-day statement, and a
+    # deploy that force-pushes a branch 96 times a day is pure noise in the repo
+    # and in any CDN cache in front of it.
+    #
+    # Wrapped so publishing can never fail the run. The digest is the product;
+    # the website is a convenience. A deploy that dies because the network
+    # dropped must not turn a successful post into a failed run -- and must not
+    # be silent either, hence web_reason in the report.
+    if report.digest_posted and not effective:
+        try:
+            report.web_published, report.web_reason = await _publish_web_edition()
+        except Exception as exc:
+            logger.exception("web publish stage failed")
+            report.web_reason = f"error: {exc}"
+            report.errors.append(f"web publish: {exc}")
+
     await _escalate_operator_alerts(conn, report)
 
     # Write the whole report to the LOG, not just the console.
@@ -549,6 +575,46 @@ async def run_once(conn, cfg: dict, *, dry_run: bool = False, force_digest: bool
         logger.info("run | %s", line)
 
     return report
+
+
+
+async def _publish_web_edition(timeout_s: int = 300) -> tuple[bool, str]:
+    """
+    Rebuild and publish the public web edition.
+
+    Runs `build-web --deploy` as a subprocess rather than importing it. That
+    reuses the exact code path an operator runs by hand -- so the scheduled
+    publish cannot drift from the manual one -- and it contains a hanging or
+    crashing deploy tool inside its own process with its own timeout.
+
+    Returns (published, reason). Never raises for an ordinary failure; the
+    caller records the reason and the run continues.
+    """
+    if not (os.environ.get("WEB_DEPLOY_CMD") or "").strip():
+        return False, "WEB_DEPLOY_CMD is not set"
+
+    import subprocess
+    from src import paths as _paths
+
+    def _run() -> tuple[bool, str]:
+        try:
+            r = subprocess.run(
+                [sys.executable, "-m", "src.main", "build-web", "--deploy"],
+                cwd=_paths.PROJECT_ROOT, capture_output=True, text=True,
+                timeout=timeout_s,
+            )
+        except subprocess.TimeoutExpired:
+            return False, f"deploy timed out after {timeout_s}s"
+        out = ((r.stdout or "") + (r.stderr or "")).strip()
+        tail = out.splitlines()[-1] if out else "no output"
+        if r.returncode != 0:
+            logger.warning("web publish failed (exit %s): %s", r.returncode, out[-800:])
+            return False, f"exit {r.returncode}: {tail[:200]}"
+        logger.info("web publish ok: %s", tail[:200])
+        return True, tail[:200]
+
+    # Keep the event loop responsive; the deploy is a blocking subprocess.
+    return await asyncio.to_thread(_run)
 
 
 async def _escalate_operator_alerts(conn, report: RunReport) -> None:

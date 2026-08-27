@@ -48,6 +48,9 @@ async def build() -> dict:
                 "url": m.get("url_canonical") or "",
                 "tier": int(m.get("tier") or 9),
                 "wrapper": bool(canonical.is_wrapper(m.get("url_canonical") or "")),
+                # Carried so the renderer can offer the outlet's own homepage
+                # when the article URL is an aggregator wrapper it must not emit.
+                "domain": dom,
             })
         stories.append({
             "title": rep.get("title") or "",
@@ -56,6 +59,9 @@ async def build() -> dict:
             "outlets": len(sources),
             "primary": best.get("url_canonical") or "",
             "primary_name": best.get("source_name") or best.get("source_domain") or "",
+            "primary_domain": (best.get("source_domain") or "").casefold(),
+            "primary_tier": int(best.get("tier") or 9),
+            "primary_wrapper": bool(canonical.is_wrapper(best.get("url_canonical") or "")),
             "published": rep.get("published_epoch"),
             "sources": sources[:12],
         })

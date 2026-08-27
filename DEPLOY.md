@@ -225,17 +225,26 @@ it rejects a managed integration role being used as the ping target (Discord
 auto-creates one named after your bot, humans cannot hold it, and pinging it
 notifies nobody without raising an error).
 
-## Optional: the web edition
+## The web edition
+
+The bot also publishes every story as a static page, not just the eight the
+Discord embed has room for. That pairing is why the digest could drop its
+"+N more not shown" line: nothing is hidden, it just lives on the page.
 
 ```bash
 python -m src.main build-web            # regenerate web/index.html
 python -m src.main build-web --deploy   # and publish it
 ```
 
-`web/index.html` is one self-contained static file, so any static host serves
-it. The deploy step is config, not code — set `WEB_DEPLOY_CMD` in `.env`:
+`web/index.html` is one self-contained file (the only external request is Google
+Fonts), so any static host serves it. The deploy step is config rather than
+code -- set `WEB_DEPLOY_CMD` in `.env`:
 
 ```bash
+# GitHub Pages, via the bundled helper. No login beyond the credentials you
+# already push with, which is what makes it safe to run unattended.
+WEB_DEPLOY_CMD=python tools/deploy_pages.py
+
 # Cloudflare Pages (run `npx wrangler login` once first)
 WEB_DEPLOY_CMD=npx --yes wrangler@latest pages deploy web --project-name=gta6-news --commit-dirty=true
 
@@ -243,8 +252,63 @@ WEB_DEPLOY_CMD=npx --yes wrangler@latest pages deploy web --project-name=gta6-ne
 WEB_DEPLOY_CMD=rsync -az web/ user@host:/var/www/gta6/
 ```
 
-Set `DIGEST_WEB_URL` **only after** opening the published URL in a logged-out
-browser. A link your members cannot open is worse than no link.
+Then set `DIGEST_WEB_URL` so the digest links to it -- but **only after opening
+that URL in a logged-out browser**. A link your members cannot open is worse
+than no link. This bit us once already: an earlier version pointed at a Claude
+artifact URL, which is private and auth-gated, so the link simply did nothing
+for everyone but the author.
+
+### How the daily republish works
+
+`run` refreshes the page **only after the digest has actually posted** -- once a
+day, not on every 15-minute cycle. The page's own "compiled <time>" line is a
+daily statement, and force-pushing a branch 96 times a day is noise in the repo
+and in any CDN in front of it.
+
+Publishing is wrapped so it can never fail the run. The digest is the product;
+the page is a convenience. A deploy that dies because the network dropped
+records `Web edition: not published - <reason>` in the log and the run still
+counts as successful.
+
+### About `tools/deploy_pages.py`
+
+It builds the commit with git plumbing (`hash-object`, `mktree`, `commit-tree`)
+and moves the ref directly, so nothing is ever checked out: the deploy cannot
+disturb your working tree or current branch, and is safe to run mid-edit.
+
+Each deploy is a fresh **orphan** commit that force-replaces `gh-pages`, so that
+branch holds exactly one commit. Keeping history would add a ~170KB blob per day
+to a repo otherwise under a megabyte, for old versions of a page nobody will
+read. If the page is byte-identical to what is already published, it skips the
+push entirely.
+
+It sets `GIT_TERMINAL_PROMPT=0`, so expired credentials fail immediately with a
+readable error instead of blocking forever on a prompt that, under Task
+Scheduler, no one can see -- where a hung push is indistinguishable from a slow
+one until the task time limit kills it.
+
+Pushing a `gh-pages` branch to a public repo enabled Pages automatically here,
+with no click in Settings. If that does not happen for you, set
+**Settings -> Pages -> Source** to "Deploy from a branch", branch `gh-pages`,
+folder `/ (root)`.
+
+### A caveat about the links on that page
+
+Most stories reach the bot through Google News, whose RSS links are opaque
+redirects rather than publisher URLs -- and post-2024 they cannot be decoded
+(measured: 0 of 8 sample URLs contain a recoverable address). Following the
+redirect lands on `consent.google.com` from the EU, so a reader without Google
+consent cookies hits a consent wall instead of the article.
+
+Those chips are marked with an arrow and the footer says so. Only about 28% of
+stories currently carry a link straight to the publisher.
+
+The fix is more direct RSS feeds in `config/sources.json`, and the returns were
+measured: **+10 feeds takes story-level link coverage from 28% to 68%**, +15
+reaches 74%, and it flattens out around 86%. The tail is long -- 114 distinct
+publishers -- so chasing the last 15% is not worth it. Highest-value feeds to
+add, by volume: Mashable, Kotaku, IGN, TweakTown, Polygon, SVG, eGamers,
+Notebookcheck, GTABoom, DualShockers.
 
 ## Upgrading
 
