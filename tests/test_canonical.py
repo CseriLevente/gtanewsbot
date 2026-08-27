@@ -177,3 +177,30 @@ def test_google_news_and_publisher_copies_share_a_title_hash():
         "Grand Theft Auto 6: Extended Look Global Release Times Confirmed - IGN", "IGN")
     via_publisher = "Grand Theft Auto 6: Extended Look Global Release Times Confirmed"
     assert title_hash(via_google) == title_hash(via_publisher)
+
+
+# ---------------------------------------------------------------------------
+# A relative entry link must not become a stored, unusable URL
+#
+# Shacknews' RSS emits <link>/article/150519/gta-6-gameplay-reveal</link>. The
+# old canonicalise() turned that into "https:///article/150519/..." — malformed,
+# but truthy, so the ingest path's `if not url: skip` never fired. The item was
+# stored with a link nobody could open and an empty source_domain, which then
+# defaults to tier 4. Returning "" makes the existing skip fire.
+# ---------------------------------------------------------------------------
+
+def test_a_relative_link_canonicalises_to_empty_so_it_is_skipped():
+    from src.canonical import canonicalise
+    for relative in [
+        "/article/150519/gta-6-gameplay-reveal-shows-activities",
+        "article/150519/gta-6",
+        "//",
+        "https:///article/150519/gta-6",
+    ]:
+        assert canonicalise(relative) == "", relative
+
+
+def test_a_real_url_is_unaffected_by_the_hostname_guard():
+    from src.canonical import canonicalise
+    assert canonicalise("https://www.shacknews.com/article/150519/gta-6") == \
+        "https://shacknews.com/article/150519/gta-6"

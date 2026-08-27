@@ -122,6 +122,56 @@
       "poll_seconds": 1800,
       "verified": "live",
       "note": "Verified live 2026-08-26. The only feed whose items the audience can act on THIS WEEK rather than in 2027 - e.g. 'Support for GTA Online: The Kortz Center Heist Update is Available Now' and 'Public Stress Test Calendar: FiveM for GTAV Enhanced'. Rockstar has owned Cfx.re since Aug 2023, so this is first-party for the GTA 5 RP platform the community actually runs. Not instant: useful, rarely urgent."
+    },
+    {
+      "key": "xbox_wire_gta",
+      "name": "Xbox Wire (Grand Theft Auto tag)",
+      "url": "https://news.xbox.com/en-us/tag/grand-theft-auto/feed/",
+      "tier": 1,
+      "instant": true,
+      "poll_seconds": 900,
+      "verified": "live",
+      "note": "Platform-holder first-party. Tag-scoped, so 8 entries span 2021-2026 and it is effectively noise-free. Carried the Nov 19 2026 pre-order announcement and the trailer post independently of the Newswire, which is unreachable behind Cloudflare."
+    },
+    {
+      "key": "psblog_gta6",
+      "name": "PlayStation Blog (GTA VI tag)",
+      "url": "https://blog.playstation.com/tag/grand-theft-auto-vi/feed/",
+      "tier": 1,
+      "instant": true,
+      "poll_seconds": 900,
+      "verified": "live",
+      "note": "Platform-holder first-party. Carried 'GTA VI plays best on PS5 November 19'."
+    },
+    {
+      "key": "ign",
+      "name": "IGN",
+      "url": "https://www.ign.com/rss/articles/feed?tags=games",
+      "tier": 2,
+      "instant": false,
+      "poll_seconds": 1800,
+      "verified": "live",
+      "note": "IGN was the single largest coverage hole: #1 domain in the database with no direct feed, so every item arrived as a Google News wrapper. This variant is chosen over the feedburner ones because feedburner is in canonical._REDIRECT_HOSTS and costs an extra round-trip per item."
+    },
+    {
+      "key": "gamesindustry",
+      "name": "GamesIndustry.biz",
+      "url": "https://www.gamesindustry.biz/feed",
+      "tier": 2,
+      "instant": false,
+      "poll_seconds": 1800,
+      "verified": "live",
+      "note": "Trade press; carries the Take-Two legal and business coverage others miss."
+    },
+    {
+      "key": "rps",
+      "name": "Rock Paper Shotgun",
+      "url": "https://www.rockpapershotgun.com/feed",
+      "tier": 2,
+      "instant": false,
+      "poll_seconds": 1800,
+      "verified": "live",
+      "note": "Firehose - keyword-filter for GTA."
     }
   ],
   "_publisher_names_note": "Display names by domain. Without this the raw feed title leaks into the digest as the attribution ('Eurogamer.net Latest Articles Feed', 'GameSpot - Game News'). Attribution is an editorial requirement here, so it should read like a masthead.",
@@ -203,7 +253,13 @@
     "twitter.com": 4,
     "4chan.org": 5,
     "cfx.re": 1,
-    "forum.cfx.re": 1
+    "forum.cfx.re": 1,
+    "news.xbox.com": 1,
+    "xbox.com": 1,
+    "blog.playstation.com": 1,
+    "playstation.com": 1,
+    "gamesindustry.biz": 2,
+    "rockpapershotgun.com": 2
   },
   "_domain_tier_notes": {
     "polygon.com": "Deliberately tier 3, not 2: research found no GTA-specific track record either way and refused to rate on reputation alone. Promote if it earns it.",
@@ -223,7 +279,17 @@
     "cuentame.coe.arizona.edu",
     "ftp.dia.ucla.edu",
     "eduadmin.fortune.com",
-    "smallbiz.monster.com"
+    "smallbiz.monster.com",
+    "nordic.ign.com",
+    "in.ign.com",
+    "za.ign.com",
+    "sea.ign.com",
+    "pk.ign.com",
+    "me.ign.com",
+    "hu.ign.com",
+    "adria.ign.com",
+    "il.ign.com",
+    "benelux.ign.com"
   ],
   "_blocked_domain_notes": "Two groups. (1) Rockstar's own non-news subdomains: socialclub/support/signin/store serve account pages and support articles, not news, but a site: query indexes them and they would otherwise be tiered 1 and posted as official announcements. (2) Parasite SEO: legitimate institutions' subdomains hosting spam. Near-100% precision rule - Stanford does not report on GTA 6 map leaks. Blocked on structural grounds, which is not an accusation of fabrication against the institution.",
   "blocked_handles": [

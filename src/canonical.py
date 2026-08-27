@@ -109,6 +109,15 @@ def canonicalise(url: str) -> str:
     url = strip_amp(url)
     parts = urlsplit(url)
 
+    # No host, no URL. A feed that emits RELATIVE entry links -- Shacknews does:
+    # "/article/150519/gta-6-gameplay-reveal" -- otherwise produced
+    # "https:///article/150519/...", which is malformed but TRUTHY, so the
+    # caller's `if not url: skip` never fired. The item was stored with an
+    # unusable link and an empty source_domain, which then defaults to tier 4.
+    # Returning "" makes the item skippable by the check that already exists.
+    if not parts.hostname:
+        return ""
+
     scheme = "https"
     host = (parts.hostname or "").casefold()
     if host.startswith("www."):
