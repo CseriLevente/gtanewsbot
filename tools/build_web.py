@@ -33,8 +33,8 @@ LABELS = {"official": "Official", "report": "Report", "rumour": "Rumour"}
 # Inlined so the page has no external image dependency and no favicon 404.
 FAVICON = (
     "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 3"
-    "2'%3E%3Crect width='32' height='32' rx='7' fill='%23A31D5B'/%3E%3Ctext x"
-    "='16' y='23' font-family='Georgia,serif' font-size='19' font-weight='7"
+    "2'%3E%3Crect width='32' height='32' rx='0' fill='%23cd412b'/%3E%3Ctext x"
+    "='16' y='23' font-family='Arial,sans-serif' font-size='19' font-weight='7"
     "00' fill='%23fff' text-anchor='middle'%3EW%3C/text%3E%3C/svg%3E"
 )
 
@@ -147,156 +147,200 @@ def render_story(s: dict) -> str:
     )
 
 
-CSS = """
+CSS = r"""
+/* ---------------------------------------------------------------------------
+   Bestrust Servers house style, applied to a news wire.
+
+   Tokens below are lifted from bestrustservers.com rather than invented, so the
+   two properties read as one brand: the near-black warm ground, the Roboto
+   Condensed 400/700 pair, the red/yellow/green trio, and -- the single most
+   recognisable trait of that site -- square corners on everything. 66 elements
+   on their homepage carry border-radius:0; the only round thing is the logo.
+
+   Deliberately single-theme. Bestrust is dark-only, so there is no light
+   palette to switch to; every colour is still declared explicitly and
+   color-scheme is pinned, so the page never borrows a host's background.
+
+   Semantics use their palette rather than a new one:
+     official -> green   (first-party, confirmed)
+     rumour   -> yellow  (their caution colour)
+     report   -> neutral warm white
+   Red stays the brand accent, not a status, so it never competes with the
+   confidence signal that the page exists to communicate.
+   --------------------------------------------------------------------------- */
 :root {
-  --ground:#FAF8F9; --surface:#FFFFFF; --rule:#E3DADE; --rule-soft:#F0EAEC;
-  --ink:#241C20; --ink-soft:#6B5D63; --ink-faint:#9A8C92;
-  --accent:#A31D5B;
-  --official:#1F6F4A; --report:#2A5AA8; --rumour:#A2540F;
-  --chip:#F4EFF1; --chip-ink:#4C4046;
-  --serif:"Instrument Serif",Georgia,"Times New Roman",serif;
-  --sans:"Archivo","Helvetica Neue",Arial,sans-serif;
-  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
-}
-@media (prefers-color-scheme:dark) {
-  :root:not([data-theme="light"]) {
-    --ground:#161215; --surface:#1D1719; --rule:#332A2E; --rule-soft:#241E21;
-    --ink:#F2EAED; --ink-soft:#B0A2A8; --ink-faint:#7C6E74;
-    --accent:#FF6BA6;
-    --official:#5FD39B; --report:#7FB0F5; --rumour:#E8A75C;
-    --chip:#251E21; --chip-ink:#C6B8BE;
-  }
-}
-:root[data-theme="dark"] {
-  --ground:#161215; --surface:#1D1719; --rule:#332A2E; --rule-soft:#241E21;
-  --ink:#F2EAED; --ink-soft:#B0A2A8; --ink-faint:#7C6E74;
-  --accent:#FF6BA6;
-  --official:#5FD39B; --report:#7FB0F5; --rumour:#E8A75C;
-  --chip:#251E21; --chip-ink:#C6B8BE;
+  color-scheme: dark;
+  --bg:#0d0d0d;
+  --panel:#141414;
+  --panel-hi:#1a1a1a;
+  --row-hover:rgba(255,255,255,.07);
+  --rule:rgba(255,255,255,.12);
+  --rule-soft:rgba(255,255,255,.055);
+  --text:#e6e0da;
+  --text-dim:#9a948e;
+  --text-faint:#8b847c;
+  --red:#cd412b;
+  --red-dark:#a83421;
+  --red-text:#e26150;
+  --yellow:#d5a118;
+  --green:#9cb54e;
+  --chip-bg:rgba(255,255,255,.08);
+  --warm:linear-gradient(135deg,#1c1a18 0%,#2c221c 60%,#3a2418 100%);
+  --font:"Roboto Condensed","Arial Narrow",Arial,sans-serif;
 }
 * { box-sizing:border-box }
+html { background:var(--bg) }
 body {
-  margin:0; background:var(--ground); color:var(--ink);
-  font-family:var(--sans); font-size:16px; line-height:1.5;
+  margin:0; background:var(--bg); color:var(--text);
+  font-family:var(--font); font-size:16px; line-height:1.45;
   -webkit-font-smoothing:antialiased;
 }
-.wrap { max-width:62rem; margin:0 auto; padding:0 1.5rem 4rem }
-header.masthead { padding:3.5rem 0 1.25rem; border-bottom:2px solid var(--ink) }
+a { color:inherit }
+
+/* Masthead --------------------------------------------------------------- */
+.masthead {
+  background:var(--warm);
+  border-bottom:3px solid var(--red);
+  padding:3rem 0 1.6rem;
+  margin-bottom:0;
+}
+.masthead-inner { max-width:66rem; margin:0 auto; padding:0 1.5rem }
 .eyebrow {
-  font-family:var(--mono); font-size:.7rem; letter-spacing:.16em;
-  text-transform:uppercase; color:var(--accent); margin:0 0 .7rem;
+  font-size:.75rem; font-weight:700; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--red-text); margin:0 0 .55rem;
 }
 h1 {
-  font-family:var(--serif); font-weight:400;
-  font-size:clamp(2.6rem,7vw,4.5rem); line-height:.95; margin:0;
-  letter-spacing:-.01em; text-wrap:balance;
+  font-weight:700; text-transform:uppercase;
+  font-size:clamp(2.4rem,8vw,4.75rem); line-height:.9; margin:0;
+  letter-spacing:-.005em; text-wrap:balance;
 }
-h1 em { font-style:italic; color:var(--accent) }
-.standfirst { max-width:36rem; color:var(--ink-soft); margin:1.1rem 0 0 }
+h1 em { font-style:normal; color:var(--red) }
+.standfirst {
+  max-width:40rem; color:var(--text-dim); margin:1rem 0 0; font-size:1.02rem;
+}
+
+.wrap { max-width:66rem; margin:0 auto; padding:0 1.5rem 4rem }
+
+/* Stat strip ------------------------------------------------------------- */
 .stats {
-  display:flex; flex-wrap:wrap; gap:.3rem 2rem; padding:.9rem 0;
-  border-bottom:1px solid var(--rule); font-family:var(--mono);
-  font-size:.73rem; letter-spacing:.06em; text-transform:uppercase;
-  color:var(--ink-faint);
+  display:flex; flex-wrap:wrap; gap:.3rem 2rem;
+  padding:.85rem 0; border-bottom:1px solid var(--rule);
+  font-size:.78rem; font-weight:700; letter-spacing:.08em;
+  text-transform:uppercase; color:var(--text-faint);
 }
-.stats b { color:var(--ink); font-weight:600; font-variant-numeric:tabular-nums }
+.stats b {
+  color:var(--text); font-weight:700; font-variant-numeric:tabular-nums;
+}
 .legend {
-  display:flex; flex-wrap:wrap; gap:.45rem 1.3rem; padding:.95rem 0 0;
-  font-family:var(--mono); font-size:.72rem; color:var(--ink-soft);
+  display:flex; flex-wrap:wrap; gap:.45rem 1.4rem; padding:.9rem 0 0;
+  font-size:.78rem; color:var(--text-dim);
 }
-.legend span { display:inline-flex; align-items:center; gap:.45rem }
-.dot { width:.55rem; height:.55rem; border-radius:50%; display:inline-block }
-.dot.official { background:var(--official) }
-.dot.report { background:var(--report) }
-.dot.rumour { background:var(--rumour) }
+.legend span { display:inline-flex; align-items:center; gap:.5rem }
+/* Squares, not circles. Nothing on this site is round. */
+.dot { width:.6rem; height:.6rem; display:inline-block; flex:none }
+.dot.official { background:var(--green) }
+.dot.report { background:var(--text-dim) }
+.dot.rumour { background:var(--yellow) }
+
 .note {
-  margin:1.6rem 0 0; padding:.95rem 1.1rem; background:var(--surface);
-  border:1px solid var(--rule); border-left:3px solid var(--accent);
-  font-size:.92rem; color:var(--ink-soft);
+  margin:1.5rem 0 0; padding:.9rem 1.05rem;
+  background:var(--panel); border-left:4px solid var(--red);
+  font-size:.95rem; color:var(--text-dim);
 }
-.note b { color:var(--ink) }
-main { display:flex; flex-direction:column; margin-top:2.5rem }
+.note b { color:var(--text) }
+
+/* Story rows ------------------------------------------------------------- */
+main { display:flex; flex-direction:column; margin-top:2rem; gap:1px }
 .story {
-  display:grid; grid-template-columns:7.5rem 1fr; gap:0 1.75rem;
-  padding:1.5rem 0; border-bottom:1px solid var(--rule-soft);
+  display:grid; grid-template-columns:7rem 1fr; gap:0 1.6rem;
+  padding:1.15rem 1.1rem; background:var(--panel);
+  border-left:4px solid var(--text-faint);
+  transition:background .12s linear;
 }
-.story:first-child { border-top:1px solid var(--rule) }
-.rail {
-  display:flex; flex-direction:column; align-items:flex-start; gap:.1rem;
-  border-left:3px solid var(--rule); padding-left:.85rem;
-}
-.story.official .rail { border-left-color:var(--official) }
-.story.report .rail { border-left-color:var(--report) }
-.story.rumour .rail { border-left-color:var(--rumour) }
+.story:hover { background:var(--panel-hi) }
+.story.official { border-left-color:var(--green) }
+.story.report   { border-left-color:var(--text-dim) }
+.story.rumour   { border-left-color:var(--yellow) }
+.rail { display:flex; flex-direction:column; align-items:flex-start; gap:.15rem }
 .label {
-  font-family:var(--mono); font-size:.66rem; font-weight:600;
-  letter-spacing:.12em; text-transform:uppercase;
+  font-size:.7rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
 }
-.story.official .label { color:var(--official) }
-.story.report .label { color:var(--report) }
-.story.rumour .label { color:var(--rumour) }
+.story.official .label { color:var(--green) }
+.story.report   .label { color:var(--text-dim) }
+.story.rumour   .label { color:var(--yellow) }
 .count {
-  font-family:var(--mono); font-size:1.45rem; font-weight:500; line-height:1.15;
-  font-variant-numeric:tabular-nums; color:var(--ink); margin-top:.4rem;
+  font-size:1.75rem; font-weight:700; line-height:1.05;
+  font-variant-numeric:tabular-nums; color:var(--text); margin-top:.3rem;
 }
 .count-unit {
-  font-family:var(--mono); font-size:.62rem; letter-spacing:.1em;
-  text-transform:uppercase; color:var(--ink-faint);
+  font-size:.65rem; font-weight:700; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--text-faint);
 }
 .body h2 {
-  margin:0; font-size:1.16rem; font-weight:600; line-height:1.35;
-  letter-spacing:-.005em; text-wrap:pretty;
+  margin:0; font-size:1.2rem; font-weight:700; line-height:1.3;
+  text-wrap:pretty; color:var(--text);
 }
-.body h2 a {
-  color:var(--ink); text-decoration:none; text-underline-offset:3px;
-}
+.body h2 a { color:var(--text); text-decoration:none }
 .body h2 a:hover, .body h2 a:focus-visible {
-  color:var(--accent); text-decoration:underline;
-  text-decoration-color:var(--accent);
+  color:var(--red-text); text-decoration:underline; text-underline-offset:3px;
 }
 .meta {
-  margin:.45rem 0 0; font-family:var(--mono); font-size:.72rem;
-  color:var(--ink-faint); display:flex; flex-wrap:wrap; align-items:center;
-  gap:.45rem;
+  margin:.4rem 0 0; font-size:.78rem; color:var(--text-faint);
+  display:flex; flex-wrap:wrap; align-items:center; gap:.45rem;
 }
-.lede { color:var(--ink-soft); font-weight:500 }
-.sep { color:var(--rule) }
+.lede { color:var(--text-dim); font-weight:700; text-transform:uppercase;
+  letter-spacing:.05em }
+.sep { color:var(--text-faint) }
+
+/* Source chips ----------------------------------------------------------- */
 ul.sources {
-  list-style:none; display:flex; flex-wrap:wrap; gap:.35rem;
-  margin:.85rem 0 0; padding:0;
+  list-style:none; display:flex; flex-wrap:wrap; gap:.3rem;
+  margin:.8rem 0 0; padding:0;
 }
 .chip {
-  display:inline-block; font-family:var(--mono); font-size:.68rem;
-  padding:.22rem .5rem; background:var(--chip); color:var(--chip-ink);
-  border:1px solid transparent; text-decoration:none; border-radius:2px;
+  display:inline-block; font-size:.72rem; font-weight:400;
+  padding:.2rem .5rem; background:var(--chip-bg); color:var(--text-dim);
+  border:1px solid transparent; text-decoration:none;
 }
-a.chip:hover, a.chip:focus-visible { border-color:var(--accent); color:var(--accent) }
-.chip.t1 { font-weight:600; color:var(--official) }
+a.chip:hover, a.chip:focus-visible {
+  border-color:var(--red); color:var(--text); background:rgba(205,65,43,.16);
+}
+.chip.t1 { font-weight:700; color:var(--green) }
 /* Degree sign, not an arrow: this link goes to the outlet's front page, not to
    the article, and it must not look like the real thing. */
-[data-homepage="1"]::after { content:" \\00B0"; opacity:.5 }
+[data-homepage="1"]::after { content:" \00B0"; opacity:.55 }
 h2 [data-homepage="1"]::after { font-size:.7em; vertical-align:.35em }
-/* An outlet we can name but not link. Deliberately inert: no pointer, no hover,
-   nothing that invites a click that would go nowhere. */
-.chip-plain { color:var(--ink-faint); background:transparent;
-  border:1px solid var(--rule-soft); cursor:default }
-.chip-more {
-  color:var(--ink-faint); background:transparent; border:1px dashed var(--rule);
+/* An outlet we can name but not link. Deliberately inert: no pointer, no
+   hover, nothing that invites a click that would go nowhere. */
+.chip-plain {
+  color:var(--text-faint); background:transparent;
+  border:1px solid var(--rule-soft); cursor:default;
 }
+.chip-more {
+  color:var(--text-faint); background:transparent;
+  border:1px dashed var(--rule);
+}
+
 footer {
-  margin-top:3.5rem; padding-top:1.3rem; border-top:2px solid var(--ink);
-  font-family:var(--mono); font-size:.72rem; color:var(--ink-faint);
+  margin-top:3rem; padding-top:1.2rem; border-top:3px solid var(--red);
+  font-size:.78rem; color:var(--text-faint);
   display:flex; flex-direction:column; gap:.4rem;
 }
-a:focus-visible, .chip:focus-visible { outline:2px solid var(--accent); outline-offset:2px }
+footer b { color:var(--text-dim) }
+
+a:focus-visible, .chip:focus-visible {
+  outline:2px solid var(--red); outline-offset:2px;
+}
 @media (max-width:640px) {
-  .story { grid-template-columns:1fr; gap:.75rem }
+  .story { grid-template-columns:1fr; gap:.6rem; padding:1rem .9rem }
   .rail { flex-direction:row; align-items:baseline; gap:.55rem }
-  .count { margin-top:0; font-size:1.05rem }
+  .count { margin-top:0; font-size:1.3rem }
   .count-unit { align-self:center }
+  .masthead { padding:2.2rem 0 1.3rem }
 }
 @media (prefers-reduced-motion:reduce) { * { transition:none !important; animation:none !important } }
 """
+
 
 
 def main() -> int:
@@ -331,20 +375,21 @@ def main() -> int:
         '<link rel="preconnect" href="https://fonts.googleapis.com">',
         '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>',
         '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?'
-        "family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600"
-        '&family=Instrument+Serif:ital@0;1&display=swap">',
+        'family=Roboto+Condensed:wght@400;700&display=swap">',
         "<style>" + CSS + "</style>",
         "</head>",
         "<body>",
-        '<div class="wrap">',
-        '  <header class="masthead">',
-        '    <p class="eyebrow">Leonida desk / automated wire</p>',
+        '<header class="masthead">',
+        '  <div class="masthead-inner">',
+        '    <p class="eyebrow">Bestrust Servers / GTA VI news desk</p>',
         "    <h1>Vice City <em>Wire</em></h1>",
         '    <p class="standfirst">Every GTA&nbsp;6 story our feeds carried today,'
         " grouped by event and ranked by how many outlets ran it. The chips beneath"
         " each headline name every outlet that ran the same story &mdash; that count,"
         " not any single report, is the thing worth reading.</p>",
-        "  </header>",
+        "  </div>",
+        "</header>",
+        '<div class="wrap">',
         '  <div class="stats">',
         "    <span><b>" + str(d["total_stories"]) + "</b> stories</span>",
         "    <span><b>" + str(d["total_items"]) + "</b> articles</span>",
