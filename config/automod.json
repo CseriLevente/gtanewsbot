@@ -1,0 +1,119 @@
+{
+  "_readme": [
+    "AutoMod rule definitions, applied with: python -m src.main automod-apply --yes",
+    "",
+    "TIERING PRINCIPLE: hard-block the VECTOR (file hosts, shorteners, trade",
+    "solicitation), only ALERT on the CHATTER. 'Rockstar responded to the leaked",
+    "footage' is a sentence your members will legitimately write - blocking it makes",
+    "the server unusable and pushes real discussion into DMs where you have zero",
+    "visibility.",
+    "",
+    "AUTOMOD'S BLIND SPOT: it cannot scan attachments, images or video AT ALL. The",
+    "real threat is a dragged-in .mp4, invisible to every rule below. The actual",
+    "control for that is a PERMISSION: deny Attach Files + Embed Links to @everyone",
+    "server-wide (Server Settings -> Roles -> @everyone).",
+    "",
+    "TIMEOUT actions are omitted by default: they require the bot to hold",
+    "MODERATE_MEMBERS (1099511627776), which is not in the recommended invite.",
+    "Add timeouts by hand in the UI if you want them.",
+    "",
+    "Limits: 6 KEYWORD rules per guild, 1000 keywords per rule, 10 regex patterns",
+    "per rule, 260 chars per pattern, custom_message max 150 chars."
+  ],
+
+  "rules": [
+    {
+      "name": "LEAK BLOCK: file hosts",
+      "enabled": true,
+      "block": true,
+      "custom_message": "Blocked: file-host links are not allowed here. Sharing leaked GTA 6 media puts you and this server at legal risk. See #rules.",
+      "keywords": [
+        "*mega.nz*", "*mega.io*", "*mega.co.nz*", "*mediafire.com*", "*gofile.io*",
+        "*pixeldrain.com*", "*pixeldrain.net*", "*catbox.moe*", "*litterbox.catbox.moe*",
+        "*anonfiles.com*", "*krakenfiles.com*", "*1fichier.com*", "*bunkr.si*",
+        "*bunkr.ru*", "*bunkrr.su*", "*cyberdrop.me*", "*cyberfile.me*", "*qiwi.gg*",
+        "*buzzheavier.com*", "*send.now*", "*sendspace.com*", "*dropmefiles.com*",
+        "*wetransfer.com*", "*we.tl*", "*file.io*", "*filebin.net*", "*uploadhaven.com*",
+        "*workupload.com*", "*zippyshare.day*", "*rapidgator.net*", "*turbobit.net*",
+        "*nitroflare.com*", "*doods.pro*", "*streamtape.com*", "*mixdrop.co*",
+        "*terabox.com*", "*teraboxapp.com*", "*4funbox.com*", "*gdriveplayer*",
+        "*anonymfile.com*", "*pomf.lain.la*", "*uguu.se*", "*tmpfiles.org*",
+        "*0x0.st*", "*transfer.sh*", "*ufile.io*", "*fileditch.com*"
+      ],
+      "_note": "wetransfer/terabox/sendspace have legitimate uses, but in a GTA news server the legitimate need is ~zero and the downside is high. Move any that generate real complaints into the watch rule instead of deleting them."
+    },
+    {
+      "name": "LEAK BLOCK: mirrors and shorteners",
+      "enabled": true,
+      "block": true,
+      "custom_message": "Blocked: link shorteners and clip mirrors are not allowed - they hide the destination. Post the original source link instead.",
+      "keywords": [
+        "*streamable.com*", "*streamja.com*", "*streamff.com*", "*dubz.co*",
+        "*dubz.link*", "*dubz.tv*", "*gfycat.com*", "*imgur.com/a/*",
+        "*justpaste.it*", "*rentry.co*", "*rentry.org*", "*pastebin.com*",
+        "*paste.ee*", "*controlc.com*", "*telegra.ph*", "*t.me/+*",
+        "*t.me/joinchat*", "*bit.ly*", "*tinyurl.com*", "*is.gd*", "*cutt.ly*",
+        "*rb.gy*", "*shorturl.at*", "*t.ly*", "*rebrand.ly*", "*shrtco.de*",
+        "*ouo.io*", "*linkvertise.com*", "*mboost.me*", "*loot-link.com*",
+        "*lootlabs.gg*", "*adfoc.us*", "*ay.live*", "*bc.vc*"
+      ],
+      "_note": "Shorteners are the standard indirection layer for leak distribution - they defeat any domain denylist by hiding the destination. '*imgur.com/a/*' targets ALBUMS (a multi-frame leak vector) while leaving single-image i.imgur.com links usable."
+    },
+    {
+      "name": "LEAK BLOCK: trade solicitation",
+      "enabled": true,
+      "block": true,
+      "custom_message": "Blocked: asking for or offering leaked GTA 6 media is not allowed, including via DM. This rule protects you legally. See #rules.",
+      "keywords": [
+        "*dm for the link*", "*dm for link*", "*dm for links*", "*dm me for the link*",
+        "*dm me for link*", "*dm me the vid*", "*dm me the video*", "*dm me the clip*",
+        "*dm me the leak*", "*dm for the vid*", "*dm for the clip*", "*dm for leak*",
+        "*dm for the leak*", "*dms open for*", "*check my dms*", "*i have the leak*",
+        "*i got the leak*", "*i have the clip*", "*i got the clip*",
+        "*i have the footage*", "*got the full video*", "*got the full vid*",
+        "*who wants the link*", "*who wants the clip*", "*who wants the vid*",
+        "*link in bio*", "*link in my bio*", "*link in dm*", "*link in dms*",
+        "*link in pfp*", "*trade for the*", "*selling the leak*", "*selling leaks*",
+        "*paying for the leak*", "*where can i watch the leak*",
+        "*where to watch the leak*", "*someone send the leak*", "*send me the leak*",
+        "*send the leak*", "*send me the clip*", "*anyone got the leak*",
+        "*anyone got the clip*", "*anyone have the leak*", "*drop the link*",
+        "*drop the clip*", "*drop the vid*"
+      ],
+      "_note": "Maps directly onto Discord's 'prohibits coordinating such access' language. Requesting or offering leaked media is itself the ToS violation, regardless of whether anything is actually posted."
+    },
+    {
+      "name": "LEAK BLOCK: obfuscated hosts and signatures",
+      "enabled": true,
+      "block": true,
+      "custom_message": "Blocked by the leaked-media filter. If you think this was a mistake, contact a moderator - do not repost it.",
+      "keywords": [],
+      "regex_patterns": [
+        "(?i)(mega|mediafire|gofile|pixeldrain|catbox|bunkr|cyberdrop|streamable|anonfiles|krakenfiles|qiwi|buzzheavier)\\s*[\\(\\[\\{<]?\\s*(dot|d0t|\\.|,|·|:)\\s*[\\)\\]\\}>]?\\s*(nz|io|com|moe|me|si|su|gg|to|net|org|pro)",
+        "(?i)(gta|grand\\s*theft)\\W*(6|vi)\\W*(leak|leaked|build|dev\\s*build|internal|alpha|beta|playtest|prerelease|pre-release|unreleased|nda)",
+        "(?i)\\b(gta|gtavi|gta6)[\\w\\-\\.]{0,20}\\.(mp4|mkv|mov|avi|webm|zip|rar|7z|part\\d{1,3})\\b",
+        "(?i)(before|b4)\\s*(it|this|they)?\\s*(gets?|is|get)?\\s*(deleted|taken\\s*down|removed|nuked|patched|dmca)",
+        "(?i)(magnet:\\?xt=urn:btih:|\\.torrent\\b|1337x|thepiratebay|rarbg|nyaa\\.si)"
+      ],
+      "_note": "Rust regex: NO lookahead, lookbehind or backreferences. The research's 'spaced-out hostname' pattern (m e g a . n z) is deliberately EXCLUDED from this blocking rule and moved to the watch rule below, because its \\W? separators false-positive on ordinary text. Promote it here only after a clean week in the alert channel."
+    },
+    {
+      "name": "LEAK WATCH: chatter (alert only)",
+      "enabled": true,
+      "block": false,
+      "keywords": [
+        "*gta 6 leak*", "*gta6 leak*", "*gta vi leak*", "*gtavi leak*",
+        "*leaked gameplay*", "*leaked footage*", "*leaked build*", "*leaked trailer*",
+        "*leaked map*", "*early build*", "*dev build*", "*playtest build*",
+        "*internal build*", "*source code leak*", "*unreleased footage*",
+        "*nda footage*", "*cyberleek*", "*full leak*", "*leak dump*",
+        "*megathread leak*", "*mirror link*", "*reupload*", "*reuploaded*",
+        "*new leak just dropped*", "*leak just dropped*", "*insider footage*"
+      ],
+      "regex_patterns": [
+        "(?i)m\\W?e\\W?g\\W?a\\W?\\W?n\\W?z|m\\W?e\\W?d\\W?i\\W?a\\W?f\\W?i\\W?r\\W?e|g\\W?o\\W?f\\W?i\\W?l\\W?e|p\\W?i\\W?x\\W?e\\W?l\\W?d\\W?r\\W?a\\W?i\\W?n"
+      ],
+      "_note": "DELIBERATELY DOES NOT BLOCK. Its job is to tell moderators where attention is needed. Blocking legitimate news discussion would make the server unusable and drive real conversation into DMs where you have no visibility."
+    }
+  ]
+}

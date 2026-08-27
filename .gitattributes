@@ -1,0 +1,6 @@
+# Normalise to LF in the repo; check out native on Windows.
+* text=auto eol=lf
+
+# Task Scheduler XML must stay UTF-16 with a BOM or schtasks misdecodes
+# non-ASCII paths and every run fails with 0x8007010B.
+*.xml binary

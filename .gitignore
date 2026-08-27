@@ -1,0 +1,18 @@
+.env
+logs/
+data/
+*.db
+*.db-wal
+*.db-shm
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+research/_scratch/
+
+# Machine-specific: contains your username, hostname and absolute paths.
+# Generate it with `python -m src.main make-task`.
+infra/gta6-news-bot-task.xml
+
+# Build output — regenerate with `python -m src.main build-web`.
+web/
