@@ -241,16 +241,40 @@ Fonts), so any static host serves it. The deploy step is config rather than
 code -- set `WEB_DEPLOY_CMD` in `.env`:
 
 ```bash
-# GitHub Pages, via the bundled helper. No login beyond the credentials you
-# already push with, which is what makes it safe to run unattended.
-WEB_DEPLOY_CMD=python tools/deploy_pages.py
+# Both hosts at once -- what this deployment uses.
+WEB_DEPLOY_CMD=python tools/publish_web.py
 
-# Cloudflare Pages (run `npx wrangler login` once first)
+# ...or a single host:
+WEB_DEPLOY_CMD=python tools/deploy_pages.py                    # GitHub Pages
 WEB_DEPLOY_CMD=npx --yes wrangler@latest pages deploy web --project-name=gta6-news --commit-dirty=true
-
-# or your own nginx
-WEB_DEPLOY_CMD=rsync -az web/ user@host:/var/www/gta6/
+WEB_DEPLOY_CMD=rsync -az web/ user@host:/var/www/gta6/         # your own nginx
 ```
+
+### Why two hosts
+
+Live at both:
+
+| Host | URL | Role |
+|---|---|---|
+| Cloudflare Pages | `https://gta6-news.pages.dev/` | linked by the digest |
+| GitHub Pages | `https://cserilevente.github.io/gtanewsbot/` | standby |
+
+`tools/publish_web.py` attempts every target independently and succeeds if **at
+least one** published. Chaining the two in a shell with `&&` would get both of
+those wrong: a failed first deploy would skip the second, and a failed standby
+would fail the whole run.
+
+The standby earns its keep because the Cloudflare credential is an OAuth token
+on a machine nobody logs into. When it eventually expires, the nightly deploy
+starts failing silently -- and without a second host, the URL posted to Discord
+every evening would rot. A partial failure is reported on stderr naming the
+target, so it shows up in `logs/bot.log` rather than being discovered months
+later.
+
+Note that `gta6-news.pages.dev` returns **403 to non-browser user agents**
+(Cloudflare bot filtering). That is expected and affects nothing real, but a
+health check written with `urllib` will look like an outage; send a browser
+user agent.
 
 Then set `DIGEST_WEB_URL` so the digest links to it -- but **only after opening
 that URL in a logged-out browser**. A link your members cannot open is worse
