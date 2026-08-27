@@ -1,0 +1,1909 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Vice City Wire</title>
+<meta name="description" content="Every GTA 6 story our feeds carried today: 107 stories from 300 articles, grouped by event and ranked by how many outlets ran it.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Vice City Wire">
+<meta property="og:title" content="Vice City Wire">
+<meta property="og:description" content="Every GTA 6 story our feeds carried today: 107 stories from 300 articles, grouped by event and ranked by how many outlets ran it.">
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='0' fill='%23cd412b'/%3E%3Ctext x='16' y='23' font-family='Arial,sans-serif' font-size='19' font-weight='700' fill='%23fff' text-anchor='middle'%3EW%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700&display=swap">
+<style>
+/* ---------------------------------------------------------------------------
+   Bestrust Servers house style, applied to a news wire.
+
+   Tokens below are lifted from bestrustservers.com rather than invented, so the
+   two properties read as one brand: the near-black warm ground, the Roboto
+   Condensed 400/700 pair, the red/yellow/green trio, and -- the single most
+   recognisable trait of that site -- square corners on everything. 66 elements
+   on their homepage carry border-radius:0; the only round thing is the logo.
+
+   Deliberately single-theme. Bestrust is dark-only, so there is no light
+   palette to switch to; every colour is still declared explicitly and
+   color-scheme is pinned, so the page never borrows a host's background.
+
+   Semantics use their palette rather than a new one:
+     official -> green   (first-party, confirmed)
+     rumour   -> yellow  (their caution colour)
+     report   -> neutral warm white
+   Red stays the brand accent, not a status, so it never competes with the
+   confidence signal that the page exists to communicate.
+   --------------------------------------------------------------------------- */
+:root {
+  color-scheme: dark;
+  --bg:#0d0d0d;
+  --panel:#141414;
+  --panel-hi:#1a1a1a;
+  --row-hover:rgba(255,255,255,.07);
+  --rule:rgba(255,255,255,.12);
+  --rule-soft:rgba(255,255,255,.055);
+  --text:#e6e0da;
+  --text-dim:#9a948e;
+  --text-faint:#8b847c;
+  --red:#cd412b;
+  --red-dark:#a83421;
+  --red-text:#e26150;
+  --yellow:#d5a118;
+  --green:#9cb54e;
+  --chip-bg:rgba(255,255,255,.08);
+  --warm:linear-gradient(135deg,#1c1a18 0%,#2c221c 60%,#3a2418 100%);
+  --font:"Roboto Condensed","Arial Narrow",Arial,sans-serif;
+}
+* { box-sizing:border-box }
+html { background:var(--bg) }
+body {
+  margin:0; background:var(--bg); color:var(--text);
+  font-family:var(--font); font-size:16px; line-height:1.45;
+  -webkit-font-smoothing:antialiased;
+}
+a { color:inherit }
+
+/* Masthead --------------------------------------------------------------- */
+.masthead {
+  background:var(--warm);
+  border-bottom:3px solid var(--red);
+  padding:3rem 0 1.6rem;
+  margin-bottom:0;
+}
+.masthead-inner { max-width:66rem; margin:0 auto; padding:0 1.5rem }
+.eyebrow {
+  font-size:.75rem; font-weight:700; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--red-text); margin:0 0 .55rem;
+}
+h1 {
+  font-weight:700; text-transform:uppercase;
+  font-size:clamp(2.4rem,8vw,4.75rem); line-height:.9; margin:0;
+  letter-spacing:-.005em; text-wrap:balance;
+}
+h1 em { font-style:normal; color:var(--red) }
+.standfirst {
+  max-width:40rem; color:var(--text-dim); margin:1rem 0 0; font-size:1.02rem;
+}
+
+.wrap { max-width:66rem; margin:0 auto; padding:0 1.5rem 4rem }
+
+/* Stat strip ------------------------------------------------------------- */
+.stats {
+  display:flex; flex-wrap:wrap; gap:.3rem 2rem;
+  padding:.85rem 0; border-bottom:1px solid var(--rule);
+  font-size:.78rem; font-weight:700; letter-spacing:.08em;
+  text-transform:uppercase; color:var(--text-faint);
+}
+.stats b {
+  color:var(--text); font-weight:700; font-variant-numeric:tabular-nums;
+}
+.legend {
+  display:flex; flex-wrap:wrap; gap:.45rem 1.4rem; padding:.9rem 0 0;
+  font-size:.78rem; color:var(--text-dim);
+}
+.legend span { display:inline-flex; align-items:center; gap:.5rem }
+/* Squares, not circles. Nothing on this site is round. */
+.dot { width:.6rem; height:.6rem; display:inline-block; flex:none }
+.dot.official { background:var(--green) }
+.dot.report { background:var(--text-dim) }
+.dot.rumour { background:var(--yellow) }
+
+.note {
+  margin:1.5rem 0 0; padding:.9rem 1.05rem;
+  background:var(--panel); border-left:4px solid var(--red);
+  font-size:.95rem; color:var(--text-dim);
+}
+.note b { color:var(--text) }
+
+/* Story rows ------------------------------------------------------------- */
+main { display:flex; flex-direction:column; margin-top:2rem; gap:1px }
+.story {
+  display:grid; grid-template-columns:7rem 1fr; gap:0 1.6rem;
+  padding:1.15rem 1.1rem; background:var(--panel);
+  border-left:4px solid var(--text-faint);
+  transition:background .12s linear;
+}
+.story:hover { background:var(--panel-hi) }
+.story.official { border-left-color:var(--green) }
+.story.report   { border-left-color:var(--text-dim) }
+.story.rumour   { border-left-color:var(--yellow) }
+.rail { display:flex; flex-direction:column; align-items:flex-start; gap:.15rem }
+.label {
+  font-size:.7rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
+}
+.story.official .label { color:var(--green) }
+.story.report   .label { color:var(--text-dim) }
+.story.rumour   .label { color:var(--yellow) }
+.count {
+  font-size:1.75rem; font-weight:700; line-height:1.05;
+  font-variant-numeric:tabular-nums; color:var(--text); margin-top:.3rem;
+}
+.count-unit {
+  font-size:.65rem; font-weight:700; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--text-faint);
+}
+.body h2 {
+  margin:0; font-size:1.2rem; font-weight:700; line-height:1.3;
+  text-wrap:pretty; color:var(--text);
+}
+.body h2 a { color:var(--text); text-decoration:none }
+.body h2 a:hover, .body h2 a:focus-visible {
+  color:var(--red-text); text-decoration:underline; text-underline-offset:3px;
+}
+.meta {
+  margin:.4rem 0 0; font-size:.78rem; color:var(--text-faint);
+  display:flex; flex-wrap:wrap; align-items:center; gap:.45rem;
+}
+.lede { color:var(--text-dim); font-weight:700; text-transform:uppercase;
+  letter-spacing:.05em }
+.sep { color:var(--text-faint) }
+
+/* Source chips ----------------------------------------------------------- */
+ul.sources {
+  list-style:none; display:flex; flex-wrap:wrap; gap:.3rem;
+  margin:.8rem 0 0; padding:0;
+}
+.chip {
+  display:inline-block; font-size:.72rem; font-weight:400;
+  padding:.2rem .5rem; background:var(--chip-bg); color:var(--text-dim);
+  border:1px solid transparent; text-decoration:none;
+}
+a.chip:hover, a.chip:focus-visible {
+  border-color:var(--red); color:var(--text); background:rgba(205,65,43,.16);
+}
+.chip.t1 { font-weight:700; color:var(--green) }
+/* Degree sign, not an arrow: this link goes to the outlet's front page, not to
+   the article, and it must not look like the real thing. */
+[data-homepage="1"]::after { content:" \00B0"; opacity:.55 }
+h2 [data-homepage="1"]::after { font-size:.7em; vertical-align:.35em }
+/* An outlet we can name but not link. Deliberately inert: no pointer, no
+   hover, nothing that invites a click that would go nowhere. */
+.chip-plain {
+  color:var(--text-faint); background:transparent;
+  border:1px solid var(--rule-soft); cursor:default;
+}
+.chip-more {
+  color:var(--text-faint); background:transparent;
+  border:1px dashed var(--rule);
+}
+
+footer {
+  margin-top:3rem; padding-top:1.2rem; border-top:3px solid var(--red);
+  font-size:.78rem; color:var(--text-faint);
+  display:flex; flex-direction:column; gap:.4rem;
+}
+footer b { color:var(--text-dim) }
+
+a:focus-visible, .chip:focus-visible {
+  outline:2px solid var(--red); outline-offset:2px;
+}
+@media (max-width:640px) {
+  .story { grid-template-columns:1fr; gap:.6rem; padding:1rem .9rem }
+  .rail { flex-direction:row; align-items:baseline; gap:.55rem }
+  .count { margin-top:0; font-size:1.3rem }
+  .count-unit { align-self:center }
+  .masthead { padding:2.2rem 0 1.3rem }
+}
+@media (prefers-reduced-motion:reduce) { * { transition:none !important; animation:none !important } }
+</style>
+</head>
+<body>
+<header class="masthead">
+  <div class="masthead-inner">
+    <p class="eyebrow">Bestrust Servers / GTA VI news desk</p>
+    <h1>Vice City <em>Wire</em></h1>
+    <p class="standfirst">Every GTA&nbsp;6 story our feeds carried today, grouped by event and ranked by how many outlets ran it. The chips beneath each headline name every outlet that ran the same story &mdash; that count, not any single report, is the thing worth reading.</p>
+  </div>
+</header>
+<div class="wrap">
+  <div class="stats">
+    <span><b>107</b> stories</span>
+    <span><b>300</b> articles</span>
+    <span><b>2</b> official</span>
+    <span><b>50</b> reports</span>
+    <span><b>55</b> rumours</span>
+    <span>compiled <b>2026-08-27 22:42</b></span>
+  </div>
+  <div class="legend">
+    <span><i class="dot official"></i> Official &mdash; first-party Rockstar or Take-Two</span>
+    <span><i class="dot report"></i> Report &mdash; established outlet, reported as fact</span>
+    <span><i class="dot rumour"></i> Rumour &mdash; unconfirmed, or sourced from leaked material</span>
+  </div>
+  <p class="note"><b>On leaks:</b> a claim whose only source is leaked material stays labelled a rumour permanently, however many outlets repeat it. We describe what those reports <em>claim</em> and link the journalism that reported it &mdash; never the leaked material itself.</p>
+  <main>
+      <article class="story rumour">
+        <div class="rail">
+          <span class="label">Rumour</span>
+          <span class="count">21</span>
+          <span class="count-unit">outlets</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://videogameschronicle.com/news/gta-6-leaks-have-been-heartbreaking-for-our-team-says-rockstar-games-in-a-public-statement-regarding-gameplay-videos" target="_blank" rel="noopener noreferrer">Rockstar issues statement on GTA 6 gameplay leaks, calling them &quot;heartbreaking&quot; and warning they may include some spoilers</a></h2>
+          <p class="meta"><span class="lede">VGC</span><span class="sep">/</span><time>26 Aug, 13:54</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://gameinformer.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">Game Informer</a></li>
+<li><a class="chip" href="https://engadget.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">Engadget</a></li>
+<li><a class="chip" href="https://pcgamer.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">PC Gamer</a></li>
+<li><a class="chip" href="https://eurogamer.net/" target="_blank" rel="noopener noreferrer" data-homepage="1">Eurogamer</a></li>
+<li><a class="chip" href="https://gamespot.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">GameSpot</a></li>
+<li><a class="chip" href="https://theverge.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">The Verge</a></li>
+<li><a class="chip" href="https://videogameschronicle.com/news/gta-6-leaks-have-been-heartbreaking-for-our-team-says-rockstar-games-in-a-public-statement-regarding-gameplay-videos" target="_blank" rel="noopener noreferrer">VGC</a></li>
+<li><a class="chip" href="https://nordic.ign.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">IGN Nordic</a></li>
+<li><a class="chip" href="https://gamesradar.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">GamesRadar+</a></li>
+<li><a class="chip" href="https://ign.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">IGN</a></li>
+<li><a class="chip" href="https://me.ign.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">IGN</a></li>
+<li><a class="chip" href="https://notebookcheck.net/" target="_blank" rel="noopener noreferrer" data-homepage="1">Notebookcheck</a></li>
+<li><span class="chip chip-more">+9 more</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story report">
+        <div class="rail">
+          <span class="label">Report</span>
+          <span class="count">13</span>
+          <span class="count-unit">outlets</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://pcgamer.com/news/live/grand-theft-auto-6-reveal-live-coverage-breaking-down-the-netflix-extended-look-event" target="_blank" rel="noopener noreferrer">GTA 6 Netflix extended look live report - all the gameplay and revelations from Rockstar&#x27;s Grand Theft Auto 6 premiere</a></h2>
+          <p class="meta"><span class="lede">PC Gamer</span><span class="sep">/</span><time>27 Aug, 16:03</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://sea.ign.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">IGN Southeast Asia</a></li>
+<li><a class="chip" href="https://in.ign.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">IGN India</a></li>
+<li><a class="chip" href="https://pcgamer.com/news/live/grand-theft-auto-6-reveal-live-coverage-breaking-down-the-netflix-extended-look-event" target="_blank" rel="noopener noreferrer">PC Gamer</a></li>
+<li><a class="chip" href="https://ign.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">IGN</a></li>
+<li><a class="chip" href="https://eurogamer.net/gta-6-extended-look-netflix-live-report" target="_blank" rel="noopener noreferrer">Eurogamer</a></li>
+<li><a class="chip" href="https://pushsquare.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">Push Square</a></li>
+<li><a class="chip" href="https://polygon.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">Polygon</a></li>
+<li><a class="chip" href="https://rockstarintel.com/gta-6-gameplay-systems-revealed-by-rockstar" target="_blank" rel="noopener noreferrer">RockstarINTEL</a></li>
+<li><span class="chip chip-plain">Tom&#x27;s Guide</span></li>
+<li><span class="chip chip-plain">9to5Toys</span></li>
+<li><span class="chip chip-plain">OC3D</span></li>
+<li><span class="chip chip-plain">Mashable</span></li>
+<li><span class="chip chip-more">+1 more</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story report">
+        <div class="rail">
+          <span class="label">Report</span>
+          <span class="count">12</span>
+          <span class="count-unit">outlets</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://polygon.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">How to watch GTA 6&#x27;s Netflix preview</a></h2>
+          <p class="meta"><span class="lede">Polygon</span><span class="sep">/</span><time>27 Aug, 16:20</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://polygon.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">Polygon</a></li>
+<li><span class="chip chip-plain">IMDb</span></li>
+<li><span class="chip chip-plain">Men&#x27;s Journal</span></li>
+<li><span class="chip chip-plain">SlashGear</span></li>
+<li><span class="chip chip-plain">NewsNation</span></li>
+<li><span class="chip chip-plain">The Shortcut | Matt Swider</span></li>
+<li><span class="chip chip-plain">Forbes</span></li>
+<li><span class="chip chip-plain">Mashable</span></li>
+<li><span class="chip chip-plain">DraftKings Network</span></li>
+<li><span class="chip chip-plain">Neowin</span></li>
+<li><span class="chip chip-plain">What&#x27;s on Netflix</span></li>
+<li><span class="chip chip-plain">PC Guide</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story report">
+        <div class="rail">
+          <span class="label">Report</span>
+          <span class="count">10</span>
+          <span class="count-unit">outlets</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://gamespot.com/articles/gta-6-extended-look-how-to-watch-what-to-expect-and-more" target="_blank" rel="noopener noreferrer">When to watch Grand Theft Auto 6: An Extended Look on Netflix and YouTube in your time zone</a></h2>
+          <p class="meta"><span class="lede">GameSpot</span><span class="sep">/</span><time>26 Aug, 14:45</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://gamespot.com/articles/gta-6-extended-look-how-to-watch-what-to-expect-and-more" target="_blank" rel="noopener noreferrer">GameSpot</a></li>
+<li><a class="chip" href="https://engadget.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">Engadget</a></li>
+<li><a class="chip" href="https://nordic.ign.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">IGN Nordic</a></li>
+<li><a class="chip" href="https://videogameschronicle.com/news/when-to-watch-grand-theft-auto-6-an-extended-look-on-netflix-and-youtube-in-your-time-zone" target="_blank" rel="noopener noreferrer">VGC</a></li>
+<li><a class="chip" href="https://gtaboom.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">GTA BOOM</a></li>
+<li><span class="chip chip-plain">Hypebeast</span></li>
+<li><span class="chip chip-plain">PCMag</span></li>
+<li><span class="chip chip-plain">9to5Toys</span></li>
+<li><span class="chip chip-plain">bgr.com</span></li>
+<li><span class="chip chip-plain">Diario AS</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story rumour">
+        <div class="rail">
+          <span class="label">Rumour</span>
+          <span class="count">9</span>
+          <span class="count-unit">outlets</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://gamespot.com/articles/gta-6-netflix-trailers-beefy-runtime-revealed-footage-captured-on-ps5" target="_blank" rel="noopener noreferrer">GTA 6 Netflix Trailer’s Beefy Runtime Revealed, Footage Captured On PS5</a></h2>
+          <p class="meta"><span class="lede">GameSpot</span><span class="sep">/</span><time>27 Aug, 15:18</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://variety.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">Variety</a></li>
+<li><a class="chip" href="https://gamespot.com/articles/gta-6-netflix-trailers-beefy-runtime-revealed-footage-captured-on-ps5" target="_blank" rel="noopener noreferrer">GameSpot</a></li>
+<li><a class="chip" href="https://kotaku.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">Kotaku</a></li>
+<li><a class="chip" href="https://gtaboom.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">GTA BOOM</a></li>
+<li><span class="chip chip-plain">ixbt.games</span></li>
+<li><span class="chip chip-plain">VICE</span></li>
+<li><span class="chip chip-plain">Media Play News</span></li>
+<li><span class="chip chip-plain">Bleeding Cool News</span></li>
+<li><span class="chip chip-plain">thestreet.com</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story rumour">
+        <div class="rail">
+          <span class="label">Rumour</span>
+          <span class="count">9</span>
+          <span class="count-unit">outlets</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://eurogamer.net/gta-6-leaker-cashes-out--cyberleek-crypto-scheme" target="_blank" rel="noopener noreferrer">Cyberleek may have just cashed out on their GTA 6 leak, earning over $200,000 in the most predictable crypto rugpull ever performed</a></h2>
+          <p class="meta"><span class="lede">Eurogamer</span><span class="sep">/</span><time>27 Aug, 21:05</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://eurogamer.net/gta-6-leaker-cashes-out--cyberleek-crypto-scheme" target="_blank" rel="noopener noreferrer">Eurogamer</a></li>
+<li><a class="chip" href="https://pcgamer.com/games/grand-theft-auto/cyberleek-may-have-just-cashed-out-on-their-gta-6-leak-earning-over-usd200-000-in-the-most-predictable-crypto-rugpull-ever-performed" target="_blank" rel="noopener noreferrer">PC Gamer</a></li>
+<li><a class="chip" href="https://ign.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">IGN</a></li>
+<li><a class="chip" href="https://kotaku.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">Kotaku</a></li>
+<li><a class="chip" href="https://gtaboom.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">GTA BOOM</a></li>
+<li><span class="chip chip-plain">Benzinga</span></li>
+<li><span class="chip chip-plain">CoinDesk</span></li>
+<li><span class="chip chip-plain">Finbold</span></li>
+<li><span class="chip chip-plain">VICE</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story report">
+        <div class="rail">
+          <span class="label">Report</span>
+          <span class="count">8</span>
+          <span class="count-unit">outlets</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://eurogamer.net/gta-6-activities-things-to-do-spotted-so-far" target="_blank" rel="noopener noreferrer">Every activity we&#x27;ve spotted in GTA 6&#x27;s extended look trailer and previews so far</a></h2>
+          <p class="meta"><span class="lede">Eurogamer</span><span class="sep">/</span><time>27 Aug, 21:46</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://nordic.ign.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">IGN Nordic</a></li>
+<li><a class="chip" href="https://eurogamer.net/gta-6-activities-things-to-do-spotted-so-far" target="_blank" rel="noopener noreferrer">Eurogamer</a></li>
+<li><a class="chip" href="https://ign.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">IGN</a></li>
+<li><a class="chip" href="https://gamesradar.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">GamesRadar+</a></li>
+<li><a class="chip" href="https://gtaboom.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">GTA BOOM</a></li>
+<li><a class="chip" href="https://pushsquare.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">Push Square</a></li>
+<li><span class="chip chip-plain">GAMINGbible</span></li>
+<li><span class="chip chip-plain">Just Jared</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story report">
+        <div class="rail">
+          <span class="label">Report</span>
+          <span class="count">7</span>
+          <span class="count-unit">outlets</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://gamespot.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">For GTA 6, Rockstar has more than doubled in size since Red Dead Redemption 2, and has an entire Los Angeles branch dedicated to realistic NPCs</a></h2>
+          <p class="meta"><span class="lede">GameSpot</span><span class="sep">/</span><time>26 Aug, 20:21</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://gamespot.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">GameSpot</a></li>
+<li><a class="chip" href="https://gamesradar.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">GamesRadar+</a></li>
+<li><a class="chip" href="https://polygon.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">Polygon</a></li>
+<li><span class="chip chip-plain">Mezha</span></li>
+<li><span class="chip chip-plain">Digital Trends</span></li>
+<li><span class="chip chip-plain">Shacknews</span></li>
+<li><span class="chip chip-plain">DualShockers</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story report">
+        <div class="rail">
+          <span class="label">Report</span>
+          <span class="count">7</span>
+          <span class="count-unit">outlets</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://eurogamer.net/gta-6-romance-relationship-system-jason-lucia" target="_blank" rel="noopener noreferrer">I added a gang notoriety system to GTA 5, but it mostly seems to make them murder everyone except me</a></h2>
+          <p class="meta"><span class="lede">Eurogamer</span><span class="sep">/</span><time>26 Aug, 19:00</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://eurogamer.net/gta-6-romance-relationship-system-jason-lucia" target="_blank" rel="noopener noreferrer">Eurogamer</a></li>
+<li><a class="chip" href="https://pcgamer.com/games/grand-theft-auto/big-new-gta-6-gameplay-details-revealed-including-specifics-about-jason-and-lucia-character-swapping-play-as-a-couple-or-go-off-and-cause-chaos-independently" target="_blank" rel="noopener noreferrer">PC Gamer</a></li>
+<li><a class="chip" href="https://kotaku.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">Kotaku</a></li>
+<li><a class="chip" href="https://rockstarintel.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">RockstarINTEL</a></li>
+<li><span class="chip chip-plain">Rock Paper Shotgun</span></li>
+<li><span class="chip chip-plain">MP1st</span></li>
+<li><span class="chip chip-plain">svg.com</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story rumour">
+        <div class="rail">
+          <span class="label">Rumour</span>
+          <span class="count">6</span>
+          <span class="count-unit">outlets</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://gamespot.com/articles/gta-6-spoilers-are-part-of-the-latest-gameplay-leak" target="_blank" rel="noopener noreferrer">Latest GTA 6 leak confirms full dong</a></h2>
+          <p class="meta"><span class="lede">GameSpot</span><span class="sep">/</span><time>24 Aug, 22:22</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://gamespot.com/articles/gta-6-spoilers-are-part-of-the-latest-gameplay-leak" target="_blank" rel="noopener noreferrer">GameSpot</a></li>
+<li><a class="chip" href="https://pcgamer.com/games/grand-theft-auto/latest-gta-6-leak-confirms-full-dong" target="_blank" rel="noopener noreferrer">PC Gamer</a></li>
+<li><a class="chip" href="https://tweaktown.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">TweakTown</a></li>
+<li><span class="chip chip-plain">eGamers.io</span></li>
+<li><span class="chip chip-plain">Mashable</span></li>
+<li><span class="chip chip-plain">BeInCrypto</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story rumour">
+        <div class="rail">
+          <span class="label">Rumour</span>
+          <span class="count">6</span>
+          <span class="count-unit">outlets</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://pcgamer.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">Watch Out, The GTA 6 Leaker Is Now Sharing Story Spoilers</a></h2>
+          <p class="meta"><span class="lede">PC Gamer</span><span class="sep">/</span><time>26 Aug, 18:28</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://pcgamer.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">PC Gamer</a></li>
+<li><a class="chip" href="https://kotaku.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">Kotaku</a></li>
+<li><a class="chip" href="https://screenrant.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">Screen Rant</a></li>
+<li><span class="chip chip-plain">eGamers.io</span></li>
+<li><span class="chip chip-plain">GameDaily</span></li>
+<li><span class="chip chip-plain">Mashable</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story rumour">
+        <div class="rail">
+          <span class="label">Rumour</span>
+          <span class="count">6</span>
+          <span class="count-unit">outlets</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://rockstarintel.com/breaking-rockstar-games-respond-to-gta-6-leaks-with-new-statement" target="_blank" rel="noopener noreferrer">BREAKING: Rockstar Games Respond To GTA 6 Leaks With New Statement</a></h2>
+          <p class="meta"><span class="lede">RockstarINTEL</span><span class="sep">/</span><time>26 Aug, 13:46</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://rockstarintel.com/breaking-rockstar-games-respond-to-gta-6-leaks-with-new-statement" target="_blank" rel="noopener noreferrer">RockstarINTEL</a></li>
+<li><span class="chip chip-plain">The FPS Review</span></li>
+<li><span class="chip chip-plain">Fox News</span></li>
+<li><span class="chip chip-plain">The Independent</span></li>
+<li><span class="chip chip-plain">BroBible</span></li>
+<li><span class="chip chip-plain">Radio Times</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story report">
+        <div class="rail">
+          <span class="label">Report</span>
+          <span class="count">5</span>
+          <span class="count-unit">outlets</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://gamespot.com/articles/gta-6-wants-to-remind-you-that-looks-matter-in-the-influencer-hustle-of-vice-city" target="_blank" rel="noopener noreferrer">GTA 6 Wants To Remind You That Looks Matter In The Influencer Hustle Of Vice City</a></h2>
+          <p class="meta"><span class="lede">GameSpot</span><span class="sep">/</span><time>27 Aug, 14:07</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://za.ign.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">IGN Africa</a></li>
+<li><a class="chip" href="https://gamespot.com/articles/gta-6-wants-to-remind-you-that-looks-matter-in-the-influencer-hustle-of-vice-city" target="_blank" rel="noopener noreferrer">GameSpot</a></li>
+<li><a class="chip" href="https://gamesradar.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">GamesRadar+</a></li>
+<li><a class="chip" href="https://polygon.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">Polygon</a></li>
+<li><span class="chip chip-plain">80 Level</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story report">
+        <div class="rail">
+          <span class="label">Report</span>
+          <span class="count">5</span>
+          <span class="count-unit">outlets</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://gamesradar.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">Rockstar Confirms GTA 6 Is Bringing Back San Andreas’ Weight System</a></h2>
+          <p class="meta"><span class="lede">GamesRadar+</span><span class="sep">/</span><time>26 Aug, 19:47</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://gamesradar.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">GamesRadar+</a></li>
+<li><a class="chip" href="https://gamespot.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">GameSpot</a></li>
+<li><a class="chip" href="https://kotaku.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">Kotaku</a></li>
+<li><span class="chip chip-plain">GAMINGbible</span></li>
+<li><span class="chip chip-plain">Shacknews</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story rumour">
+        <div class="rail">
+          <span class="label">Rumour</span>
+          <span class="count">5</span>
+          <span class="count-unit">outlets</span>
+        </div>
+        <div class="body">
+          <h2>Netflix just said today&#x27;s Grand Theft Auto VI extended look is &#x27;entirely from in-game footage on PlayStation 5&#x27;</h2>
+          <p class="meta"><span class="lede">Shacknews</span><span class="sep">/</span><time>27 Aug, 15:28</time></p>
+          <ul class="sources">
+<li><span class="chip chip-plain">Shacknews</span></li>
+<li><span class="chip chip-plain">TechRadar</span></li>
+<li><span class="chip chip-plain">Stevivor</span></li>
+<li><span class="chip chip-plain">PlayStation Universe</span></li>
+<li><span class="chip chip-plain">9to5Toys</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story official">
+        <div class="rail">
+          <span class="label">Official</span>
+          <span class="count">4</span>
+          <span class="count-unit">outlets</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://gamespot.com/articles/devolver-digital-reveals-its-gta-6-competitor-and-its-a-remaster-of-a-nonexistent-remake" target="_blank" rel="noopener noreferrer">Grand Theft Auto VI is Now Set to Launch November 19, 2026</a></h2>
+          <p class="meta"><span class="lede">GameSpot</span><span class="sep">/</span><time>27 Aug, 17:48</time></p>
+          <ul class="sources">
+<li><a class="chip t1" href="https://rockstargames.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">Rockstar Newswire</a></li>
+<li><a class="chip" href="https://gamespot.com/articles/devolver-digital-reveals-its-gta-6-competitor-and-its-a-remaster-of-a-nonexistent-remake" target="_blank" rel="noopener noreferrer">GameSpot</a></li>
+<li><a class="chip" href="https://engadget.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">Engadget</a></li>
+<li><a class="chip" href="https://tweaktown.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">TweakTown</a></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story report">
+        <div class="rail">
+          <span class="label">Report</span>
+          <span class="count">4</span>
+          <span class="count-unit">outlets</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://videogameschronicle.com/news/everything-shown-at-the-grand-theft-auto-6-netflix-special" target="_blank" rel="noopener noreferrer">Everything shown at the Grand Theft Auto 6 Netflix special</a></h2>
+          <p class="meta"><span class="lede">VGC</span><span class="sep">/</span><time>27 Aug, 21:35</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://videogameschronicle.com/news/everything-shown-at-the-grand-theft-auto-6-netflix-special" target="_blank" rel="noopener noreferrer">VGC</a></li>
+<li><a class="chip" href="https://kotaku.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">Kotaku</a></li>
+<li><span class="chip chip-plain">Comics Gaming Magazine</span></li>
+<li><span class="chip chip-plain">Benzinga</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story report">
+        <div class="rail">
+          <span class="label">Report</span>
+          <span class="count">4</span>
+          <span class="count-unit">outlets</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://eurogamer.net/grand-theft-auto-6-netflix-something-went-wrong" target="_blank" rel="noopener noreferrer">GTA 6&#x27;s Netflix trailer premiere was so popular it temporarily crashed the streaming service</a></h2>
+          <p class="meta"><span class="lede">Eurogamer</span><span class="sep">/</span><time>27 Aug, 21:31</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://eurogamer.net/grand-theft-auto-6-netflix-something-went-wrong" target="_blank" rel="noopener noreferrer">Eurogamer</a></li>
+<li><span class="chip chip-plain">Currently.com</span></li>
+<li><span class="chip chip-plain">Ynetnews</span></li>
+<li><span class="chip chip-plain">USA Today</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story rumour">
+        <div class="rail">
+          <span class="label">Rumour</span>
+          <span class="count">4</span>
+          <span class="count-unit">outlets</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://gamespot.com/articles/gta-6-skipping-pc-at-launch-and-having-no-online-right-away-is-good-helldivers-boss-says" target="_blank" rel="noopener noreferrer">GTA 6 Skipping PC At Launch And Having No Online Right Away Is Good, Helldivers Boss Says</a></h2>
+          <p class="meta"><span class="lede">GameSpot</span><span class="sep">/</span><time>27 Aug, 21:15</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://gamespot.com/articles/gta-6-skipping-pc-at-launch-and-having-no-online-right-away-is-good-helldivers-boss-says" target="_blank" rel="noopener noreferrer">GameSpot</a></li>
+<li><a class="chip" href="https://za.ign.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">IGN Africa</a></li>
+<li><a class="chip" href="https://ign.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">IGN</a></li>
+<li><a class="chip" href="https://gamesradar.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">GamesRadar+</a></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story report">
+        <div class="rail">
+          <span class="label">Report</span>
+          <span class="count">4</span>
+          <span class="count-unit">outlets</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://eurogamer.net/gta-6-character-switching-reactive-world-jason-lucia-romance" target="_blank" rel="noopener noreferrer">GTA 6 gameplay details revealed in new preview, including seamless character switching, playing as a couple and more</a></h2>
+          <p class="meta"><span class="lede">Eurogamer</span><span class="sep">/</span><time>27 Aug, 11:51</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://sea.ign.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">IGN Southeast Asia</a></li>
+<li><a class="chip" href="https://ign.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">IGN</a></li>
+<li><a class="chip" href="https://eurogamer.net/gta-6-character-switching-reactive-world-jason-lucia-romance" target="_blank" rel="noopener noreferrer">Eurogamer</a></li>
+<li><span class="chip chip-plain">TechRadar</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story rumour">
+        <div class="rail">
+          <span class="label">Rumour</span>
+          <span class="count">4</span>
+          <span class="count-unit">outlets</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://bbc.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">Rockstar Finally Releases A Statement On The GTA 6 Leaks</a></h2>
+          <p class="meta"><span class="lede">BBC</span><span class="sep">/</span><time>26 Aug, 13:53</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://bbc.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">BBC</a></li>
+<li><a class="chip" href="https://kotaku.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">Kotaku</a></li>
+<li><a class="chip" href="https://polygon.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">Polygon</a></li>
+<li><span class="chip chip-plain">tech-insider.org</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story rumour">
+        <div class="rail">
+          <span class="label">Rumour</span>
+          <span class="count">4</span>
+          <span class="count-unit">outlets</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://gamespot.com/articles/nba-2k27-teases-gta-6-crossover-of-some-kind" target="_blank" rel="noopener noreferrer">NBA 2K27 Teases GTA 6 Crossover Of Some Kind</a></h2>
+          <p class="meta"><span class="lede">GameSpot</span><span class="sep">/</span><time>25 Aug, 21:00</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://gamespot.com/articles/nba-2k27-teases-gta-6-crossover-of-some-kind" target="_blank" rel="noopener noreferrer">GameSpot</a></li>
+<li><a class="chip" href="https://kotaku.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">Kotaku</a></li>
+<li><a class="chip" href="https://ign.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">IGN</a></li>
+<li><a class="chip" href="https://gtaboom.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">GTA BOOM</a></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story rumour">
+        <div class="rail">
+          <span class="label">Rumour</span>
+          <span class="count">4</span>
+          <span class="count-unit">outlets</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://pcgamer.com/games/grand-theft-auto/as-take-two-seeks-ip-addresses-and-phone-numbers-of-thousands-in-gta-6-subpoena-discord-says-its-not-been-served-the-order-just-yet" target="_blank" rel="noopener noreferrer">Discord is yet to be served Take-Two&#x27;s GTA 6 leak subpoena, which is set to demand broad access to user data</a></h2>
+          <p class="meta"><span class="lede">PC Gamer</span><span class="sep">/</span><time>25 Aug, 10:39</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://pcgamer.com/games/grand-theft-auto/as-take-two-seeks-ip-addresses-and-phone-numbers-of-thousands-in-gta-6-subpoena-discord-says-its-not-been-served-the-order-just-yet" target="_blank" rel="noopener noreferrer">PC Gamer</a></li>
+<li><a class="chip" href="https://eurogamer.net/take-two-rockstar-gta-6-leaks-subpoena-discord-response" target="_blank" rel="noopener noreferrer">Eurogamer</a></li>
+<li><a class="chip" href="https://insider-gaming.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">Insider Gaming</a></li>
+<li><span class="chip chip-plain">Mashable</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story rumour">
+        <div class="rail">
+          <span class="label">Rumour</span>
+          <span class="count">4</span>
+          <span class="count-unit">outlets</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://rockstarintel.com/3rd-gta6-gameplay-video-of-the-day-gets-posted-onto-the-internet" target="_blank" rel="noopener noreferrer">GTA 6 Suffers Sixth Straight Day of Gameplay Leaks — Here&#x27;s Everything We Know</a></h2>
+          <p class="meta"><span class="lede">RockstarINTEL</span><span class="sep">/</span><time>24 Aug, 10:39</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://ign.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">IGN</a></li>
+<li><a class="chip" href="https://rockstarintel.com/3rd-gta6-gameplay-video-of-the-day-gets-posted-onto-the-internet" target="_blank" rel="noopener noreferrer">RockstarINTEL</a></li>
+<li><span class="chip chip-plain">Diario AS</span></li>
+<li><span class="chip chip-plain">svg.com</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story report">
+        <div class="rail">
+          <span class="label">Report</span>
+          <span class="count">3</span>
+          <span class="count-unit">outlets</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://ign.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">We Saw More of GTA 6, and Rockstar’s New Open World Feels Less Like a Game and More Like a Place</a></h2>
+          <p class="meta"><span class="lede">IGN</span><span class="sep">/</span><time>27 Aug, 21:04</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://ign.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">IGN</a></li>
+<li><span class="chip chip-plain">GameGPU</span></li>
+<li><span class="chip chip-plain">Hypebeast</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story report">
+        <div class="rail">
+          <span class="label">Report</span>
+          <span class="count">3</span>
+          <span class="count-unit">outlets</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://videogameschronicle.com/news/rockstar-reveals-a-swathe-of-new-gta-6-details-ahead-of-the-netflix-extended-look" target="_blank" rel="noopener noreferrer">Rockstar reveals a swathe of new GTA 6 details ahead of the Netflix Extended Look</a></h2>
+          <p class="meta"><span class="lede">VGC</span><span class="sep">/</span><time>27 Aug, 11:04</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://videogameschronicle.com/news/rockstar-reveals-a-swathe-of-new-gta-6-details-ahead-of-the-netflix-extended-look" target="_blank" rel="noopener noreferrer">VGC</a></li>
+<li><span class="chip chip-plain">Mashable</span></li>
+<li><span class="chip chip-plain">Forbes</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story report">
+        <div class="rail">
+          <span class="label">Report</span>
+          <span class="count">3</span>
+          <span class="count-unit">outlets</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://ign.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">Rockstar Reveals Grand Theft Auto 6 Will Have RPG Mechanics Like Eating, Exercising, and More</a></h2>
+          <p class="meta"><span class="lede">IGN</span><span class="sep">/</span><time>26 Aug, 19:10</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://ign.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">IGN</a></li>
+<li><a class="chip" href="https://notebookcheck.net/" target="_blank" rel="noopener noreferrer" data-homepage="1">Notebookcheck</a></li>
+<li><span class="chip chip-plain">player.one</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story rumour">
+        <div class="rail">
+          <span class="label">Rumour</span>
+          <span class="count">3</span>
+          <span class="count-unit">outlets</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://gamespot.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">GTA 6 Leaks: A Timeline Of The Events So Far</a></h2>
+          <p class="meta"><span class="lede">GameSpot</span><span class="sep">/</span><time>25 Aug, 16:53</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://gamespot.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">GameSpot</a></li>
+<li><a class="chip" href="https://tweaktown.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">TweakTown</a></li>
+<li><span class="chip chip-plain">GAMINGbible</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story report">
+        <div class="rail">
+          <span class="label">Report</span>
+          <span class="count">3</span>
+          <span class="count-unit">outlets</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://ign.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">Grand Theft Auto 6: An Extended Look Global Release Times Confirmed</a></h2>
+          <p class="meta"><span class="lede">IGN</span><span class="sep">/</span><time>25 Aug, 13:10</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://ign.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">IGN</a></li>
+<li><a class="chip" href="https://notebookcheck.net/" target="_blank" rel="noopener noreferrer" data-homepage="1">Notebookcheck</a></li>
+<li><span class="chip chip-plain">facebook.com</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story report">
+        <div class="rail">
+          <span class="label">Report</span>
+          <span class="count">3</span>
+          <span class="count-unit">outlets</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://tweaktown.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">&#x27;Anime GTA 6&#x27; Ananta finally has an official January 2027 release date</a></h2>
+          <p class="meta"><span class="lede">TweakTown</span><span class="sep">/</span><time>27 Aug, 02:02</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://tweaktown.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">TweakTown</a></li>
+<li><span class="chip chip-plain">Bleacher Report</span></li>
+<li><span class="chip chip-plain">GamesHub</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story rumour">
+        <div class="rail">
+          <span class="label">Rumour</span>
+          <span class="count">3</span>
+          <span class="count-unit">outlets</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://notebookcheck.net/" target="_blank" rel="noopener noreferrer" data-homepage="1">GTA 6 leaks appeared on Discord before Cyberleek videos spread, giving Rockstar a clue</a></h2>
+          <p class="meta"><span class="lede">Notebookcheck</span><span class="sep">/</span><time>25 Aug, 22:40</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://notebookcheck.net/" target="_blank" rel="noopener noreferrer" data-homepage="1">Notebookcheck</a></li>
+<li><span class="chip chip-plain">svg.com</span></li>
+<li><span class="chip chip-plain">TechRepublic</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story rumour">
+        <div class="rail">
+          <span class="label">Rumour</span>
+          <span class="count">3</span>
+          <span class="count-unit">outlets</span>
+        </div>
+        <div class="body">
+          <h2>GTA 6 previews on the way tomorrow as creators go hands-off at Rockstar HQ</h2>
+          <p class="meta"><span class="lede">Pure Xbox</span><span class="sep">/</span><time>26 Aug, 16:00</time></p>
+          <ul class="sources">
+<li><span class="chip chip-plain">Pure Xbox</span></li>
+<li><span class="chip chip-plain">DualShockers</span></li>
+<li><span class="chip chip-plain">GAMINGbible</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story rumour">
+        <div class="rail">
+          <span class="label">Rumour</span>
+          <span class="count">2</span>
+          <span class="count-unit">outlets</span>
+        </div>
+        <div class="body">
+          <h2>GTA 6 Cyberleek update: Everything leaked so far, what might be next</h2>
+          <p class="meta"><span class="lede">Mashable SEA</span><span class="sep">/</span><time>26 Aug, 17:21</time></p>
+          <ul class="sources">
+<li><span class="chip chip-plain">Mashable SEA</span></li>
+<li><span class="chip chip-plain">Mashable</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story rumour">
+        <div class="rail">
+          <span class="label">Rumour</span>
+          <span class="count">2</span>
+          <span class="count-unit">outlets</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://pcgamer.com/games/grand-theft-auto/i-attempted-to-become-a-professional-driver-in-a-gta-5-where-every-car-had-no-friction" target="_blank" rel="noopener noreferrer">Former Rockstar dev says the GTA 6 leaks are a &#x27;nothing burger&#x27;: &#x27;There won&#x27;t be much damage&#x27;</a></h2>
+          <p class="meta"><span class="lede">PC Gamer</span><span class="sep">/</span><time>24 Aug, 18:52</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://gamesradar.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">GamesRadar+</a></li>
+<li><a class="chip" href="https://pcgamer.com/games/grand-theft-auto/i-attempted-to-become-a-professional-driver-in-a-gta-5-where-every-car-had-no-friction" target="_blank" rel="noopener noreferrer">PC Gamer</a></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story rumour">
+        <div class="rail">
+          <span class="label">Rumour</span>
+          <span class="count">2</span>
+          <span class="count-unit">outlets</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://polygon.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">Rockstar Games Releases Official Response to &#x27;Heartbreaking&#x27; GTA 6 Leaks</a></h2>
+          <p class="meta"><span class="lede">Polygon</span><span class="sep">/</span><time>26 Aug, 14:14</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://polygon.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">Polygon</a></li>
+<li><span class="chip chip-plain">svg.com</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story official">
+        <div class="rail">
+          <span class="label">Official</span>
+          <span class="count">2</span>
+          <span class="count-unit">outlets</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://rockstarintel.com/gta-online-event-week-new-drift-transform-races-content-august-27th-september-2nd" target="_blank" rel="noopener noreferrer">Take in Triple Rewards Shifting Shape in New Random Transform Races</a></h2>
+          <p class="meta"><span class="lede">RockstarINTEL</span><span class="sep">/</span><time>27 Aug, 14:05</time></p>
+          <ul class="sources">
+<li><a class="chip t1" href="https://rockstargames.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">Rockstar Newswire</a></li>
+<li><a class="chip" href="https://rockstarintel.com/gta-online-event-week-new-drift-transform-races-content-august-27th-september-2nd" target="_blank" rel="noopener noreferrer">RockstarINTEL</a></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story report">
+        <div class="rail">
+          <span class="label">Report</span>
+          <span class="count">2</span>
+          <span class="count-unit">outlets</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://rockstarintel.com/newest-gta-6-gameplay-leak-shows-nudist-town-and-its-graphic" target="_blank" rel="noopener noreferrer">GTA 6 Gameplay Graphics Are CRAZY</a></h2>
+          <p class="meta"><span class="lede">RockstarINTEL</span><span class="sep">/</span><time>27 Aug, 21:41</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://ign.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">IGN</a></li>
+<li><a class="chip" href="https://rockstarintel.com/newest-gta-6-gameplay-leak-shows-nudist-town-and-its-graphic" target="_blank" rel="noopener noreferrer">RockstarINTEL</a></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story report">
+        <div class="rail">
+          <span class="label">Report</span>
+          <span class="count">2</span>
+          <span class="count-unit">outlets</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://eurogamer.net/gta-6-driving-car-theft-more-challenging-rockstar-realism-push" target="_blank" rel="noopener noreferrer">GTA 6&#x27;s driving and car-jacking will be &quot;more challenging&quot;, Rockstar says, amid a seemingly big push for realism</a></h2>
+          <p class="meta"><span class="lede">Eurogamer</span><span class="sep">/</span><time>27 Aug, 21:22</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://ign.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">IGN</a></li>
+<li><a class="chip" href="https://eurogamer.net/gta-6-driving-car-theft-more-challenging-rockstar-realism-push" target="_blank" rel="noopener noreferrer">Eurogamer</a></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story report">
+        <div class="rail">
+          <span class="label">Report</span>
+          <span class="count">2</span>
+          <span class="count-unit">outlets</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://eurogamer.net/gta-6-revamping-wanted-system-adding-criminal-profiles" target="_blank" rel="noopener noreferrer">GTA 6 is revamping the Wanted system and giving you a Criminal Profile</a></h2>
+          <p class="meta"><span class="lede">Eurogamer</span><span class="sep">/</span><time>27 Aug, 21:16</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://eurogamer.net/gta-6-revamping-wanted-system-adding-criminal-profiles" target="_blank" rel="noopener noreferrer">Eurogamer</a></li>
+<li><a class="chip" href="https://gtaboom.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">GTA BOOM</a></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story report">
+        <div class="rail">
+          <span class="label">Report</span>
+          <span class="count">2</span>
+          <span class="count-unit">outlets</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://gamespot.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">GTA 6’s Love Story Matters Less Than Rockstar’s Trailers Make It Seem</a></h2>
+          <p class="meta"><span class="lede">GameSpot</span><span class="sep">/</span><time>27 Aug, 21:00</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://gamespot.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">GameSpot</a></li>
+<li><a class="chip" href="https://ign.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">IGN</a></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story report">
+        <div class="rail">
+          <span class="label">Report</span>
+          <span class="count">2</span>
+          <span class="count-unit">outlets</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://ign.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">We Saw GTA 6 at Rockstar HQ — Here Are 69 Gameplay Details You Haven’t Seen</a></h2>
+          <p class="meta"><span class="lede">IGN</span><span class="sep">/</span><time>27 Aug, 21:00</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://ign.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">IGN</a></li>
+<li><span class="chip chip-plain">Mashable</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story report">
+        <div class="rail">
+          <span class="label">Report</span>
+          <span class="count">2</span>
+          <span class="count-unit">outlets</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://gamesradar.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">Rockstar is &quot;at least 10 years ahead&quot; of other games with GTA 6&#x27;s NPC crowd technology, says dev behind 007: First Light&#x27;s incredible crowds</a></h2>
+          <p class="meta"><span class="lede">GamesRadar+</span><span class="sep">/</span><time>27 Aug, 18:17</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://gamesradar.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">GamesRadar+</a></li>
+<li><span class="chip chip-plain">Creative Bloq</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story rumour">
+        <div class="rail">
+          <span class="label">Rumour</span>
+          <span class="count">2</span>
+          <span class="count-unit">outlets</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://eurogamer.net/gta-6-food-weight-exercise-benders" target="_blank" rel="noopener noreferrer">GTA 6 officially has character weight and exercise systems, and even &quot;multi-day benders&quot; reportedly have a visible effect</a></h2>
+          <p class="meta"><span class="lede">Eurogamer</span><span class="sep">/</span><time>27 Aug, 11:40</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://eurogamer.net/gta-6-food-weight-exercise-benders" target="_blank" rel="noopener noreferrer">Eurogamer</a></li>
+<li><a class="chip" href="https://tweaktown.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">TweakTown</a></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story report">
+        <div class="rail">
+          <span class="label">Report</span>
+          <span class="count">2</span>
+          <span class="count-unit">outlets</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://eurogamer.net/gta-6-rockstar-miami-research-team-ex-criminals-gun-dealers" target="_blank" rel="noopener noreferrer">Rockstar set up a special GTA 6 team in Miami to meet with &quot;ex-criminals, law enforcement, club promoters, gun dealers and anyone notorious or influential&quot;</a></h2>
+          <p class="meta"><span class="lede">Eurogamer</span><span class="sep">/</span><time>27 Aug, 11:37</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://eurogamer.net/gta-6-rockstar-miami-research-team-ex-criminals-gun-dealers" target="_blank" rel="noopener noreferrer">Eurogamer</a></li>
+<li><a class="chip" href="https://tweaktown.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">TweakTown</a></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story report">
+        <div class="rail">
+          <span class="label">Report</span>
+          <span class="count">2</span>
+          <span class="count-unit">outlets</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://kotaku.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">Why A Game Boy Color Game Is Releasing On GTA 6 Launch Day</a></h2>
+          <p class="meta"><span class="lede">Kotaku</span><span class="sep">/</span><time>26 Aug, 21:00</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://kotaku.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">Kotaku</a></li>
+<li><span class="chip chip-plain">Rock Paper Shotgun</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story rumour">
+        <div class="rail">
+          <span class="label">Rumour</span>
+          <span class="count">2</span>
+          <span class="count-unit">outlets</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://kotaku.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">GTA 6&#x27;s Leak #13 Reveals Truly Astonishing Crowds At The Beach</a></h2>
+          <p class="meta"><span class="lede">Kotaku</span><span class="sep">/</span><time>25 Aug, 13:50</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://kotaku.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">Kotaku</a></li>
+<li><a class="chip" href="https://notebookcheck.net/" target="_blank" rel="noopener noreferrer" data-homepage="1">Notebookcheck</a></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story report">
+        <div class="rail">
+          <span class="label">Report</span>
+          <span class="count">2</span>
+          <span class="count-unit">outlets</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://polygon.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">Forget GTA 6, Here&#x27;s the Biggest Gaming Video to Drop Today</a></h2>
+          <p class="meta"><span class="lede">Polygon</span><span class="sep">/</span><time>27 Aug, 17:11</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://polygon.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">Polygon</a></li>
+<li><span class="chip chip-plain">tech-insider.org</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story rumour">
+        <div class="rail">
+          <span class="label">Rumour</span>
+          <span class="count">2</span>
+          <span class="count-unit">outlets</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://rockstarintel.com/15th-gta-6-gameplay-leak-shows-lucia-and-police-car-chase" target="_blank" rel="noopener noreferrer">15th GTA 6 Gameplay Leak Shows Lucia And Police Car Chase</a></h2>
+          <p class="meta"><span class="lede">RockstarINTEL</span><span class="sep">/</span><time>26 Aug, 14:10</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://rockstarintel.com/15th-gta-6-gameplay-leak-shows-lucia-and-police-car-chase" target="_blank" rel="noopener noreferrer">RockstarINTEL</a></li>
+<li><span class="chip chip-plain">HotCars</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story rumour">
+        <div class="rail">
+          <span class="label">Rumour</span>
+          <span class="count">2</span>
+          <span class="count-unit">outlets</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://polygon.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">&#x27;GTA 6&#x27; Hacker&#x27;s New Leak Is Total Rage Bait For Rockstar</a></h2>
+          <p class="meta"><span class="lede">Polygon</span><span class="sep">/</span><time>25 Aug, 18:20</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://polygon.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">Polygon</a></li>
+<li><span class="chip chip-plain">ixbt.games</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story rumour">
+        <div class="rail">
+          <span class="label">Rumour</span>
+          <span class="count">2</span>
+          <span class="count-unit">outlets</span>
+        </div>
+        <div class="body">
+          <h2>Should PC Players Buy A PS5 Or Xbox For GTA 6 — Or Wait For PC?</h2>
+          <p class="meta"><span class="lede">Digital Spy</span><span class="sep">/</span><time>27 Aug, 00:38</time></p>
+          <ul class="sources">
+<li><span class="chip chip-plain">Digital Spy</span></li>
+<li><span class="chip chip-plain">svg.com</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story rumour">
+        <div class="rail">
+          <span class="label">Rumour</span>
+          <span class="count">2</span>
+          <span class="count-unit">outlets</span>
+        </div>
+        <div class="body">
+          <h2>GTA 6 Drivers Can Finally Take It to the Track, Leaked Map Shows</h2>
+          <p class="meta"><span class="lede">Motor1.com</span><span class="sep">/</span><time>26 Aug, 18:44</time></p>
+          <ul class="sources">
+<li><span class="chip chip-plain">Motor1.com</span></li>
+<li><span class="chip chip-plain">The Drive</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story report">
+        <div class="rail">
+          <span class="label">Report</span>
+          <span class="count">1</span>
+          <span class="count-unit">outlet</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://eurogamer.net/gta-6-shift-towards-realism-rockstar-taking-huge-risk" target="_blank" rel="noopener noreferrer">GTA 6&#x27;s apparent shift towards awkward ultra-realism is a huge risk - and that&#x27;s exactly why it&#x27;s the right thing to do</a></h2>
+          <p class="meta"><span class="lede">Eurogamer</span><span class="sep">/</span><time>27 Aug, 22:08</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://eurogamer.net/gta-6-shift-towards-realism-rockstar-taking-huge-risk" target="_blank" rel="noopener noreferrer">Eurogamer</a></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story report">
+        <div class="rail">
+          <span class="label">Report</span>
+          <span class="count">1</span>
+          <span class="count-unit">outlet</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://ign.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">In GTA 6 You’re Not Just Wanted, You’re Hunted</a></h2>
+          <p class="meta"><span class="lede">IGN</span><span class="sep">/</span><time>27 Aug, 22:00</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://ign.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">IGN</a></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story report">
+        <div class="rail">
+          <span class="label">Report</span>
+          <span class="count">1</span>
+          <span class="count-unit">outlet</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://gamespot.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">GTA 6 Playthrough Can Last Roughly 80 Hours</a></h2>
+          <p class="meta"><span class="lede">GameSpot</span><span class="sep">/</span><time>27 Aug, 21:35</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://gamespot.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">GameSpot</a></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story report">
+        <div class="rail">
+          <span class="label">Report</span>
+          <span class="count">1</span>
+          <span class="count-unit">outlet</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://ign.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">GTA 6: Extended Look Breakdown Livestream | GTFM</a></h2>
+          <p class="meta"><span class="lede">IGN</span><span class="sep">/</span><time>27 Aug, 21:33</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://ign.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">IGN</a></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story report">
+        <div class="rail">
+          <span class="label">Report</span>
+          <span class="count">1</span>
+          <span class="count-unit">outlet</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://gamespot.com/articles/gta-6-returns-to-six-star-wanted-levels" target="_blank" rel="noopener noreferrer">GTA 6 Returns To Six-Star Wanted Levels</a></h2>
+          <p class="meta"><span class="lede">GameSpot</span><span class="sep">/</span><time>27 Aug, 21:29</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://gamespot.com/articles/gta-6-returns-to-six-star-wanted-levels" target="_blank" rel="noopener noreferrer">GameSpot</a></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story report">
+        <div class="rail">
+          <span class="label">Report</span>
+          <span class="count">1</span>
+          <span class="count-unit">outlet</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://nordic.ign.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">‘We Have To Be Careful’ — Rockstar on GTA 6’s Approach to Satire</a></h2>
+          <p class="meta"><span class="lede">IGN Nordic</span><span class="sep">/</span><time>27 Aug, 21:16</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://nordic.ign.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">IGN Nordic</a></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story report">
+        <div class="rail">
+          <span class="label">Report</span>
+          <span class="count">1</span>
+          <span class="count-unit">outlet</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://pk.ign.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">‘We Are Nervous!’ — Rockstar Knows the Pressure on GTA 6 to Be a Success</a></h2>
+          <p class="meta"><span class="lede">IGN Pakistan</span><span class="sep">/</span><time>27 Aug, 21:16</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://pk.ign.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">IGN Pakistan</a></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story report">
+        <div class="rail">
+          <span class="label">Report</span>
+          <span class="count">1</span>
+          <span class="count-unit">outlet</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://gamespot.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">You Can Pet (And Scold, You Monster) The Dog In GTA 6</a></h2>
+          <p class="meta"><span class="lede">GameSpot</span><span class="sep">/</span><time>27 Aug, 21:15</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://gamespot.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">GameSpot</a></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story report">
+        <div class="rail">
+          <span class="label">Report</span>
+          <span class="count">1</span>
+          <span class="count-unit">outlet</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://ign.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">‘It’s a Step Forward in All Respects’ – Exclusive GTA 6 Interview</a></h2>
+          <p class="meta"><span class="lede">IGN</span><span class="sep">/</span><time>27 Aug, 21:04</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://ign.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">IGN</a></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story report">
+        <div class="rail">
+          <span class="label">Report</span>
+          <span class="count">1</span>
+          <span class="count-unit">outlet</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://ign.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">‘Is It Four Characters Now?’ — Rockstar Briefly Thought About Doubling the Number of GTA 6 Protagonists</a></h2>
+          <p class="meta"><span class="lede">IGN</span><span class="sep">/</span><time>27 Aug, 21:00</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://ign.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">IGN</a></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story report">
+        <div class="rail">
+          <span class="label">Report</span>
+          <span class="count">1</span>
+          <span class="count-unit">outlet</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://ign.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">‘It’s a Big Map, a Very Big Map’ – GTA 6 Is Rockstar’s Most Complex World Yet</a></h2>
+          <p class="meta"><span class="lede">IGN</span><span class="sep">/</span><time>27 Aug, 21:00</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://ign.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">IGN</a></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story report">
+        <div class="rail">
+          <span class="label">Report</span>
+          <span class="count">1</span>
+          <span class="count-unit">outlet</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://ign.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">PSA: GTA 6 Preloads Begin a Full Week Before the Game Releases</a></h2>
+          <p class="meta"><span class="lede">IGN</span><span class="sep">/</span><time>27 Aug, 20:58</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://ign.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">IGN</a></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story report">
+        <div class="rail">
+          <span class="label">Report</span>
+          <span class="count">1</span>
+          <span class="count-unit">outlet</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://pcgamer.com/games/fps/star-citizens-squadron-42-delayed-again-this-time-to-avoid-the-attention-buzz-saw-of-gta-6-says-chris-roberts" target="_blank" rel="noopener noreferrer">Star Citizen&#x27;s Squadron 42 delayed again, this time to avoid &#x27;the attention buzz saw of GTA 6&#x27; says Chris Roberts</a></h2>
+          <p class="meta"><span class="lede">PC Gamer</span><span class="sep">/</span><time>27 Aug, 20:48</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://pcgamer.com/games/fps/star-citizens-squadron-42-delayed-again-this-time-to-avoid-the-attention-buzz-saw-of-gta-6-says-chris-roberts" target="_blank" rel="noopener noreferrer">PC Gamer</a></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story report">
+        <div class="rail">
+          <span class="label">Report</span>
+          <span class="count">1</span>
+          <span class="count-unit">outlet</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://gamesradar.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">Oh no, you can doomscroll in GTA 6</a></h2>
+          <p class="meta"><span class="lede">GamesRadar+</span><span class="sep">/</span><time>27 Aug, 18:21</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://gamesradar.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">GamesRadar+</a></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story report">
+        <div class="rail">
+          <span class="label">Report</span>
+          <span class="count">1</span>
+          <span class="count-unit">outlet</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://gamespot.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">GTA 6 Wants You To Reconsider Doing What Everyone Does In Grand Theft Auto</a></h2>
+          <p class="meta"><span class="lede">GameSpot</span><span class="sep">/</span><time>26 Aug, 22:29</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://gamespot.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">GameSpot</a></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story report">
+        <div class="rail">
+          <span class="label">Report</span>
+          <span class="count">1</span>
+          <span class="count-unit">outlet</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://gamespot.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">How Switching Between GTA 6’s Two Protagonists Works</a></h2>
+          <p class="meta"><span class="lede">GameSpot</span><span class="sep">/</span><time>26 Aug, 21:21</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://gamespot.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">GameSpot</a></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story report">
+        <div class="rail">
+          <span class="label">Report</span>
+          <span class="count">1</span>
+          <span class="count-unit">outlet</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://ign.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">Rockstar Games Doubled in Size for GTA 6, Hired Real World Professionals for Fashion, Vehicles, and More</a></h2>
+          <p class="meta"><span class="lede">IGN</span><span class="sep">/</span><time>26 Aug, 20:42</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://ign.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">IGN</a></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story report">
+        <div class="rail">
+          <span class="label">Report</span>
+          <span class="count">1</span>
+          <span class="count-unit">outlet</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://kotaku.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">GTA 6 Doesn’t Take Kindly To Open Carry</a></h2>
+          <p class="meta"><span class="lede">Kotaku</span><span class="sep">/</span><time>26 Aug, 19:55</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://kotaku.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">Kotaku</a></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story report">
+        <div class="rail">
+          <span class="label">Report</span>
+          <span class="count">1</span>
+          <span class="count-unit">outlet</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://videogameschronicle.com/news/is-80-the-new-normal-for-video-games" target="_blank" rel="noopener noreferrer">Is $80 the new normal for video games?</a></h2>
+          <p class="meta"><span class="lede">VGC</span><span class="sep">/</span><time>26 Aug, 18:00</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://videogameschronicle.com/news/is-80-the-new-normal-for-video-games" target="_blank" rel="noopener noreferrer">VGC</a></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story rumour">
+        <div class="rail">
+          <span class="label">Rumour</span>
+          <span class="count">1</span>
+          <span class="count-unit">outlet</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://kotaku.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">The Hunt For The GTA 6 Leaker Has Found A New, Likely Suspect</a></h2>
+          <p class="meta"><span class="lede">Kotaku</span><span class="sep">/</span><time>26 Aug, 00:25</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://kotaku.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">Kotaku</a></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story rumour">
+        <div class="rail">
+          <span class="label">Rumour</span>
+          <span class="count">1</span>
+          <span class="count-unit">outlet</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://pcgamer.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">GTA 6 leaker goes full cornball in newest videos, insists &#x27;using crypto is the only way&#x27;</a></h2>
+          <p class="meta"><span class="lede">PC Gamer</span><span class="sep">/</span><time>25 Aug, 18:14</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://pcgamer.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">PC Gamer</a></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story report">
+        <div class="rail">
+          <span class="label">Report</span>
+          <span class="count">1</span>
+          <span class="count-unit">outlet</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://pcgamer.com/games/grand-theft-auto/i-turned-car-friction-off-in-gta-5-help" target="_blank" rel="noopener noreferrer">I turned car friction off in GTA 5. Help</a></h2>
+          <p class="meta"><span class="lede">PC Gamer</span><span class="sep">/</span><time>24 Aug, 19:00</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://pcgamer.com/games/grand-theft-auto/i-turned-car-friction-off-in-gta-5-help" target="_blank" rel="noopener noreferrer">PC Gamer</a></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story report">
+        <div class="rail">
+          <span class="label">Report</span>
+          <span class="count">1</span>
+          <span class="count-unit">outlet</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://theverge.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">Grand Theft Auto VI exists in its own universe</a></h2>
+          <p class="meta"><span class="lede">The Verge</span><span class="sep">/</span><time>23 Aug, 14:00</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://theverge.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">The Verge</a></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story report">
+        <div class="rail">
+          <span class="label">Report</span>
+          <span class="count">1</span>
+          <span class="count-unit">outlet</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://polygon.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">Say Hello To GTA 6&#x27;s Awesome New Dialogue System</a></h2>
+          <p class="meta"><span class="lede">Polygon</span><span class="sep">/</span><time>27 Aug, 21:12</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://polygon.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">Polygon</a></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story report">
+        <div class="rail">
+          <span class="label">Report</span>
+          <span class="count">1</span>
+          <span class="count-unit">outlet</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://tweaktown.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">GTA 6&#x27;s NPCs are so ambitious Rockstar has an entire studio working on them</a></h2>
+          <p class="meta"><span class="lede">TweakTown</span><span class="sep">/</span><time>27 Aug, 12:05</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://tweaktown.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">TweakTown</a></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story report">
+        <div class="rail">
+          <span class="label">Report</span>
+          <span class="count">1</span>
+          <span class="count-unit">outlet</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://rockstarintel.com/new-gta-6-screenshots-and-art-released-by-rockstar-games" target="_blank" rel="noopener noreferrer">New GTA 6 Screenshots And Art Released By Rockstar Games</a></h2>
+          <p class="meta"><span class="lede">RockstarINTEL</span><span class="sep">/</span><time>26 Aug, 19:03</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://rockstarintel.com/new-gta-6-screenshots-and-art-released-by-rockstar-games" target="_blank" rel="noopener noreferrer">RockstarINTEL</a></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story rumour">
+        <div class="rail">
+          <span class="label">Rumour</span>
+          <span class="count">1</span>
+          <span class="count-unit">outlet</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://rockstarintel.com/gta-6-previews-confirmed-by-rockstar-and-youtuber" target="_blank" rel="noopener noreferrer">GTA 6 Previews Confirmed By Rockstar And YouTuber</a></h2>
+          <p class="meta"><span class="lede">RockstarINTEL</span><span class="sep">/</span><time>26 Aug, 14:28</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://rockstarintel.com/gta-6-previews-confirmed-by-rockstar-and-youtuber" target="_blank" rel="noopener noreferrer">RockstarINTEL</a></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story rumour">
+        <div class="rail">
+          <span class="label">Rumour</span>
+          <span class="count">1</span>
+          <span class="count-unit">outlet</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://polygon.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">Rockstar responds to GTA 6 leaks: &#x27;employees are angry&#x27;</a></h2>
+          <p class="meta"><span class="lede">Polygon</span><span class="sep">/</span><time>25 Aug, 15:37</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://polygon.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">Polygon</a></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story rumour">
+        <div class="rail">
+          <span class="label">Rumour</span>
+          <span class="count">1</span>
+          <span class="count-unit">outlet</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://rockstarintel.com/12th-gta-6-gameplay-leak-shows-nightclub-interactions-as-leaker-begs-fans" target="_blank" rel="noopener noreferrer">12th GTA 6 Gameplay Leak Shows Nightclub Interactions As Leaker Begs Fans</a></h2>
+          <p class="meta"><span class="lede">RockstarINTEL</span><span class="sep">/</span><time>25 Aug, 12:27</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://rockstarintel.com/12th-gta-6-gameplay-leak-shows-nightclub-interactions-as-leaker-begs-fans" target="_blank" rel="noopener noreferrer">RockstarINTEL</a></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story rumour">
+        <div class="rail">
+          <span class="label">Rumour</span>
+          <span class="count">1</span>
+          <span class="count-unit">outlet</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://polygon.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">&#x27;GTA 6&#x27; Leak Reveals New Feature Rockstar Was Probably Saving For Netflix</a></h2>
+          <p class="meta"><span class="lede">Polygon</span><span class="sep">/</span><time>24 Aug, 21:14</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://polygon.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">Polygon</a></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story report">
+        <div class="rail">
+          <span class="label">Report</span>
+          <span class="count">1</span>
+          <span class="count-unit">outlet</span>
+        </div>
+        <div class="body">
+          <h2><a href="https://tweaktown.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">GTA 6 &#x27;build&#x27; that&#x27;s 113GB in size is currently circulating online, and it&#x27;s fake</a></h2>
+          <p class="meta"><span class="lede">TweakTown</span><span class="sep">/</span><time>24 Aug, 07:57</time></p>
+          <ul class="sources">
+<li><a class="chip" href="https://tweaktown.com/" target="_blank" rel="noopener noreferrer" data-homepage="1">TweakTown</a></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story rumour">
+        <div class="rail">
+          <span class="label">Rumour</span>
+          <span class="count">1</span>
+          <span class="count-unit">outlet</span>
+        </div>
+        <div class="body">
+          <h2>GTA 6 Online: Everything Rockstar Said—and Didn&#x27;t Say—About Multiplayer</h2>
+          <p class="meta"><span class="lede">svg.com</span><span class="sep">/</span><time>27 Aug, 22:08</time></p>
+          <ul class="sources">
+<li><span class="chip chip-plain">svg.com</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story rumour">
+        <div class="rail">
+          <span class="label">Rumour</span>
+          <span class="count">1</span>
+          <span class="count-unit">outlet</span>
+        </div>
+        <div class="body">
+          <h2>Finally, camo shorts vindication in GTA 6</h2>
+          <p class="meta"><span class="lede">British GQ</span><span class="sep">/</span><time>27 Aug, 22:04</time></p>
+          <ul class="sources">
+<li><span class="chip chip-plain">British GQ</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story rumour">
+        <div class="rail">
+          <span class="label">Rumour</span>
+          <span class="count">1</span>
+          <span class="count-unit">outlet</span>
+        </div>
+        <div class="body">
+          <h2>&#x27;Grand Theft Auto VI&#x27;: Technical Revolution, Cinematic Narrative, and the Digital Culture War</h2>
+          <p class="meta"><span class="lede">No Film School</span><span class="sep">/</span><time>27 Aug, 21:05</time></p>
+          <ul class="sources">
+<li><span class="chip chip-plain">No Film School</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story rumour">
+        <div class="rail">
+          <span class="label">Rumour</span>
+          <span class="count">1</span>
+          <span class="count-unit">outlet</span>
+        </div>
+        <div class="body">
+          <h2>The Grand Ambitions of Grand Theft Auto VI</h2>
+          <p class="meta"><span class="lede">The New York Times</span><span class="sep">/</span><time>27 Aug, 21:02</time></p>
+          <ul class="sources">
+<li><span class="chip chip-plain">The New York Times</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story rumour">
+        <div class="rail">
+          <span class="label">Rumour</span>
+          <span class="count">1</span>
+          <span class="count-unit">outlet</span>
+        </div>
+        <div class="body">
+          <h2>Rockstar Finally Speaks As GTA 6 Leaks Spiral Out Of Control</h2>
+          <p class="meta"><span class="lede">HotHardware</span><span class="sep">/</span><time>27 Aug, 20:22</time></p>
+          <ul class="sources">
+<li><span class="chip chip-plain">HotHardware</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story rumour">
+        <div class="rail">
+          <span class="label">Rumour</span>
+          <span class="count">1</span>
+          <span class="count-unit">outlet</span>
+        </div>
+        <div class="body">
+          <h2>Army unit allowing reenlistees 4 days off incentive to play GTA 6</h2>
+          <p class="meta"><span class="lede">FOX 10 Phoenix</span><span class="sep">/</span><time>27 Aug, 19:40</time></p>
+          <ul class="sources">
+<li><span class="chip chip-plain">FOX 10 Phoenix</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story rumour">
+        <div class="rail">
+          <span class="label">Rumour</span>
+          <span class="count">1</span>
+          <span class="count-unit">outlet</span>
+        </div>
+        <div class="body">
+          <h2>Take-Two Makes Unusual GTA 6 Move With Netflix</h2>
+          <p class="meta"><span class="lede">TradingView</span><span class="sep">/</span><time>27 Aug, 18:53</time></p>
+          <ul class="sources">
+<li><span class="chip chip-plain">TradingView</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story rumour">
+        <div class="rail">
+          <span class="label">Rumour</span>
+          <span class="count">1</span>
+          <span class="count-unit">outlet</span>
+        </div>
+        <div class="body">
+          <h2>GTA 6 Isn’t Finished Yet – So Why Does Rockstar Want $100 Now?</h2>
+          <p class="meta"><span class="lede">Yahoo Tech</span><span class="sep">/</span><time>27 Aug, 18:47</time></p>
+          <ul class="sources">
+<li><span class="chip chip-plain">Yahoo Tech</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story rumour">
+        <div class="rail">
+          <span class="label">Rumour</span>
+          <span class="count">1</span>
+          <span class="count-unit">outlet</span>
+        </div>
+        <div class="body">
+          <h2>GTA 6 Editions Compared: Is The Ultimate Edition Actually Worth It?</h2>
+          <p class="meta"><span class="lede">svg.com</span><span class="sep">/</span><time>27 Aug, 17:53</time></p>
+          <ul class="sources">
+<li><span class="chip chip-plain">svg.com</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story rumour">
+        <div class="rail">
+          <span class="label">Rumour</span>
+          <span class="count">1</span>
+          <span class="count-unit">outlet</span>
+        </div>
+        <div class="body">
+          <h2>New GTA 6 information published ahead of tonight’s reveal</h2>
+          <p class="meta"><span class="lede">TheSixthAxis</span><span class="sep">/</span><time>27 Aug, 16:41</time></p>
+          <ul class="sources">
+<li><span class="chip chip-plain">TheSixthAxis</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story rumour">
+        <div class="rail">
+          <span class="label">Rumour</span>
+          <span class="count">1</span>
+          <span class="count-unit">outlet</span>
+        </div>
+        <div class="body">
+          <h2>We got Hamlet in Grand Theft Auto before GTA 6 – and it&#x27;s one of the most important video game movies ever made</h2>
+          <p class="meta"><span class="lede">Yahoo</span><span class="sep">/</span><time>27 Aug, 13:24</time></p>
+          <ul class="sources">
+<li><span class="chip chip-plain">Yahoo</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story rumour">
+        <div class="rail">
+          <span class="label">Rumour</span>
+          <span class="count">1</span>
+          <span class="count-unit">outlet</span>
+        </div>
+        <div class="body">
+          <h2>For GTA 6 and Netflix, the ad is the entertainment</h2>
+          <p class="meta"><span class="lede">The Drum</span><span class="sep">/</span><time>27 Aug, 13:12</time></p>
+          <ul class="sources">
+<li><span class="chip chip-plain">The Drum</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story rumour">
+        <div class="rail">
+          <span class="label">Rumour</span>
+          <span class="count">1</span>
+          <span class="count-unit">outlet</span>
+        </div>
+        <div class="body">
+          <h2>GTA 6 Built Rockstar Into a 4,000-Person Studio — With Stylists, Racecar Drivers and 50 Muralists on Staff</h2>
+          <p class="meta"><span class="lede">eGamers.io</span><span class="sep">/</span><time>27 Aug, 11:26</time></p>
+          <ul class="sources">
+<li><span class="chip chip-plain">eGamers.io</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story rumour">
+        <div class="rail">
+          <span class="label">Rumour</span>
+          <span class="count">1</span>
+          <span class="count-unit">outlet</span>
+        </div>
+        <div class="body">
+          <h2>Rockstar developed new tools to build GTA 6’s diverse NPC population</h2>
+          <p class="meta"><span class="lede">Shacknews</span><span class="sep">/</span><time>27 Aug, 09:40</time></p>
+          <ul class="sources">
+<li><span class="chip chip-plain">Shacknews</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story rumour">
+        <div class="rail">
+          <span class="label">Rumour</span>
+          <span class="count">1</span>
+          <span class="count-unit">outlet</span>
+        </div>
+        <div class="body">
+          <h2>Rockstar solved the tedium of driving to the next job in GTA 6</h2>
+          <p class="meta"><span class="lede">Shacknews</span><span class="sep">/</span><time>27 Aug, 08:50</time></p>
+          <ul class="sources">
+<li><span class="chip chip-plain">Shacknews</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story rumour">
+        <div class="rail">
+          <span class="label">Rumour</span>
+          <span class="count">1</span>
+          <span class="count-unit">outlet</span>
+        </div>
+        <div class="body">
+          <h2>AI ’Beyond their Wildest Dreams’. Anthropic, Leopold &amp; GTA 6. ARD #149</h2>
+          <p class="meta"><span class="lede">AI: Reset to Zero</span><span class="sep">/</span><time>26 Aug, 22:02</time></p>
+          <ul class="sources">
+<li><span class="chip chip-plain">AI: Reset to Zero</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story rumour">
+        <div class="rail">
+          <span class="label">Rumour</span>
+          <span class="count">1</span>
+          <span class="count-unit">outlet</span>
+        </div>
+        <div class="body">
+          <h2>Grand Theft Auto VI to Feature Physical Appearance Changes, Relationship Choices, Character Switching</h2>
+          <p class="meta"><span class="lede">Consequence of Sound</span><span class="sep">/</span><time>26 Aug, 21:36</time></p>
+          <ul class="sources">
+<li><span class="chip chip-plain">Consequence of Sound</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story rumour">
+        <div class="rail">
+          <span class="label">Rumour</span>
+          <span class="count">1</span>
+          <span class="count-unit">outlet</span>
+        </div>
+        <div class="body">
+          <h2>GTA 6 Leakers Demand a Physical Disc Release. Will Rockstar Accept?</h2>
+          <p class="meta"><span class="lede">BeInCrypto</span><span class="sep">/</span><time>26 Aug, 21:11</time></p>
+          <ul class="sources">
+<li><span class="chip chip-plain">BeInCrypto</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story rumour">
+        <div class="rail">
+          <span class="label">Rumour</span>
+          <span class="count">1</span>
+          <span class="count-unit">outlet</span>
+        </div>
+        <div class="body">
+          <h2>GTA 6 Is Making One Major Change To How NPCs React To Your Crimes</h2>
+          <p class="meta"><span class="lede">svg.com</span><span class="sep">/</span><time>26 Aug, 21:05</time></p>
+          <ul class="sources">
+<li><span class="chip chip-plain">svg.com</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story rumour">
+        <div class="rail">
+          <span class="label">Rumour</span>
+          <span class="count">1</span>
+          <span class="count-unit">outlet</span>
+        </div>
+        <div class="body">
+          <h2>GTA 6 Leak Confirms Rockstar’s Uber and Lyft Parody</h2>
+          <p class="meta"><span class="lede">DualShockers</span><span class="sep">/</span><time>26 Aug, 18:44</time></p>
+          <ul class="sources">
+<li><span class="chip chip-plain">DualShockers</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story rumour">
+        <div class="rail">
+          <span class="label">Rumour</span>
+          <span class="count">1</span>
+          <span class="count-unit">outlet</span>
+        </div>
+        <div class="body">
+          <h2>Rockstar Games takes to social media to decry GTA 6 leaks</h2>
+          <p class="meta"><span class="lede">A.V. Club</span><span class="sep">/</span><time>26 Aug, 18:23</time></p>
+          <ul class="sources">
+<li><span class="chip chip-plain">A.V. Club</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story rumour">
+        <div class="rail">
+          <span class="label">Rumour</span>
+          <span class="count">1</span>
+          <span class="count-unit">outlet</span>
+        </div>
+        <div class="body">
+          <h2>&#x27;GTA 6&#x27; file size: How large will the game be?</h2>
+          <p class="meta"><span class="lede">Mashable</span><span class="sep">/</span><time>26 Aug, 18:11</time></p>
+          <ul class="sources">
+<li><span class="chip chip-plain">Mashable</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story rumour">
+        <div class="rail">
+          <span class="label">Rumour</span>
+          <span class="count">1</span>
+          <span class="count-unit">outlet</span>
+        </div>
+        <div class="body">
+          <h2>GTAVI: An exclusive deep dive into the video game of the decade</h2>
+          <p class="meta"><span class="lede">Dazed</span><span class="sep">/</span><time>26 Aug, 17:58</time></p>
+          <ul class="sources">
+<li><span class="chip chip-plain">Dazed</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story rumour">
+        <div class="rail">
+          <span class="label">Rumour</span>
+          <span class="count">1</span>
+          <span class="count-unit">outlet</span>
+        </div>
+        <div class="body">
+          <h2>Grand Theft Auto VI Has Been Pushed Back, Yet Again</h2>
+          <p class="meta"><span class="lede">Bleeding Cool News</span><span class="sep">/</span><time>26 Aug, 17:17</time></p>
+          <ul class="sources">
+<li><span class="chip chip-plain">Bleeding Cool News</span></li>
+          </ul>
+        </div>
+      </article>
+      <article class="story rumour">
+        <div class="rail">
+          <span class="label">Rumour</span>
+          <span class="count">1</span>
+          <span class="count-unit">outlet</span>
+        </div>
+        <div class="body">
+          <h2>PS5 Pro Reportedly Sells Out In Germany As Grand Theft Auto VI Fuels Demand For Sony&#x27;s Console</h2>
+          <p class="meta"><span class="lede">PlayStation Universe</span><span class="sep">/</span><time>26 Aug, 16:38</time></p>
+          <ul class="sources">
+<li><span class="chip chip-plain">PlayStation Universe</span></li>
+          </ul>
+        </div>
+      </article>
+  </main>
+  <footer>
+    <span>Compiled automatically from 300 articles across 10 feeds. Headlines and links belong to their publishers.</span>
+    <span>Most stories reach us through a news aggregator, whose links are redirects rather than article addresses. We never pass one on: a <b>&deg;</b> means the link goes to that outlet's front page rather than to the article, and an outlet in grey is one we can name but not link. A named source you cannot click still counts as corroboration.</span>
+  </footer>
+</div>
+</body>
+</html>
