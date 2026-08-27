@@ -313,6 +313,81 @@ def render_instant_alert(
     return payload
 
 
+# Prefixes the embed author line of every breakout alert. The channel-side rate
+# limit counts messages by this string, so it must stay stable: changing it
+# makes older alerts uncountable and briefly lifts the cap.
+BREAKOUT_MARKER = "Breaking ·"
+
+_BREAKOUT_COLOUR: dict[str, int] = {
+    credibility.LABEL_OFFICIAL: COLOUR_OFFICIAL,
+    credibility.LABEL_REPORT: COLOUR_REPORT,
+    credibility.LABEL_RUMOUR: COLOUR_RUMOUR,
+}
+
+
+def render_breakout_alert(
+    entry: DigestEntry, *, role_id: str | None, outlet_count: int,
+    health_line: str | None = None,
+) -> dict:
+    """
+    Build a breakout alert: one story that many outlets ran at once.
+
+    Distinct from an instant alert, which is reserved for first-party news. A
+    breakout has no first-party source by definition -- if it had one it would
+    already have been alerted -- so its warrant is corroboration: when this many
+    independent outlets carry the same GTA 6 story within hours, something
+    actually happened.
+
+    Two consequences for the rendering:
+
+      * the outlet count IS the evidence, so it leads, both in the author line
+        (where BREAKOUT_MARKER makes the message countable for the channel-side
+        rate limit) and as a listed set of names the reader can check;
+      * a breakout can be sourced from leaked material, unlike an instant alert.
+        The label therefore opens the description rather than sitting in the
+        author line, so nobody can read the headline and miss that it is a
+        rumour. Per the owner's rule we describe what the reporting claims and
+        link the journalism, never the leaked material.
+    """
+    title = _truncate(entry.title, EMBED_TITLE_MAX)
+    safe_source = sanitise_attribution(entry.source_name)
+    prefix = _LABEL_PREFIX.get(entry.label, f"**{entry.label}**")
+
+    desc_parts = [f"{prefix} · reported by **{outlet_count}** outlets"]
+    if entry.summary:
+        desc_parts.append(_truncate(entry.summary, 500))
+    desc_parts.append(f"[Read on {safe_source}]({entry.url})")
+    if entry.other_outlets:
+        names = ", ".join(sanitise_attribution(o) for o in entry.other_outlets[:8])
+        more = len(entry.other_outlets) - 8
+        if more > 0:
+            names += f" +{more}"
+        desc_parts.append(f"-# Also: {names}")
+
+    embed = {
+        "title": title,
+        "description": _truncate("\n\n".join(desc_parts), EMBED_DESC_MAX),
+        "color": _BREAKOUT_COLOUR.get(entry.label, COLOUR_REPORT),
+        "author": {"name": _truncate(
+            f"{BREAKOUT_MARKER} {outlet_count} outlets · {safe_source}",
+            EMBED_AUTHOR_MAX)},
+    }
+    if health_line:
+        embed["footer"] = {"text": _truncate(health_line, EMBED_FOOTER_MAX)}
+
+    payload: dict = {"embeds": [embed]}
+    if role_id:
+        payload["content"] = _truncate(f"<@&{role_id}>", CONTENT_MAX)
+    payload["allowed_mentions"] = {
+        "parse": [],
+        "roles": [role_id] if role_id else [],
+        "users": [],
+        "replied_user": False,
+    }
+    assert_within_limits(payload)
+    return payload
+
+
 def embed_total_chars(payload: dict) -> int:
     """Sum every counted character across all embeds, as Discord does."""
     total = 0

@@ -21,6 +21,7 @@ Two rules that are not negotiable:
 from __future__ import annotations
 
 import asyncio
+import datetime as _dt
 import json
 import logging
 
@@ -295,3 +296,64 @@ async def title_already_in_channel(
             if existing and existing == needle:
                 return True, f"already announced (message {m.get('id')})"
     return False, f"not found in the last {len(messages)} messages"
+
+
+async def count_recent_marked_alerts(
+    *, token: str | None, channel_id: str | None, marker: str,
+    within_seconds: int, limit: int = 50, timeout: float = 20.0,
+) -> tuple[int | None, str]:
+    """
+    How many alerts carrying `marker` has the bot posted recently?
+
+    The channel is the rate limiter, for the same reason it is the duplicate
+    guard: a counter in SQLite would be reset by the write-persistence problem
+    on this machine, and a per-run cap alone bounds nothing — a 15-minute
+    schedule would still permit four pings an hour.
+
+    `marker` is matched against the embed author name, which the breakout
+    renderer prefixes. Returns None when the question cannot be answered, and
+    the caller must then decline to alert: an unbounded ping is worse than a
+    late one.
+    """
+    if not token or not channel_id:
+        return None, "no credentials to check the channel with"
+    if not marker:
+        return None, "no marker to match on"
+
+    url = f"{API_BASE}/channels/{channel_id}/messages?limit={int(limit)}"
+    try:
+        async with httpx.AsyncClient(timeout=timeout, headers=_headers(token)) as client:
+            resp = await client.get(url)
+    except Exception as exc:
+        return None, f"could not read channel history: {type(exc).__name__}: {exc}"
+    if resp.status_code == 403:
+        return None, ("cannot read channel history (403) — grant READ_MESSAGE_HISTORY "
+                      "to enable the breakout rate limit")
+    if resp.status_code != 200:
+        return None, f"channel history returned HTTP {resp.status_code}"
+    try:
+        messages = resp.json()
+    except Exception:
+        return None, "channel history was not valid JSON"
+
+    cutoff = _dt.datetime.now(_dt.timezone.utc) - _dt.timedelta(seconds=within_seconds)
+    count = 0
+    for m in messages:
+        if not (m.get("author") or {}).get("bot"):
+            continue
+        raw = m.get("timestamp") or ""
+        try:
+            # Discord sends RFC3339; fromisoformat handles the offset form it
+            # uses, and a trailing Z on older payloads needs translating.
+            when = _dt.datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        except ValueError:
+            continue
+        if when.tzinfo is None:
+            when = when.replace(tzinfo=_dt.timezone.utc)
+        if when < cutoff:
+            continue
+        for e in m.get("embeds") or []:
+            if ((e.get("author") or {}).get("name") or "").startswith(marker):
+                count += 1
+                break
+    return count, f"{count} in the last {within_seconds // 60} min"
