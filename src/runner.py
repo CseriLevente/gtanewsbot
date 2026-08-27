@@ -239,6 +239,19 @@ _CRUDE_RE = re.compile(
 )
 
 
+# Reasons a digest legitimately did not post. Anything else is a failure and
+# must make the run exit non-zero, so Task Scheduler's Last Run Result and
+# systemd's unit state both show it. Matched as prefixes against the strings
+# maybe_post_digest and clock.should_post_digest return; keep them in sync.
+_BENIGN_DIGEST = (
+    "local hour ",                 # before DIGEST_HOUR
+    "digest for ",                 # already posted today
+    "only ",                       # below DIGEST_MIN_ITEMS
+    "another run already claimed ",
+    "dry-run preview only",
+)
+
+
 async def send_breakout_alerts(
     conn, cfg: dict, *, dry_run: bool, health_line: str
 ) -> tuple[int, list[str]]:
@@ -339,11 +352,24 @@ async def send_breakout_alerts(
                            f"{(c.representative.get('title') or '')[:50]}")
             continue
 
+        # NEWEST wins here, unlike cluster.representative, which prefers the
+        # outlet that published first in order to credit whoever broke the
+        # story. That is right for attribution and wrong for an alert: the
+        # freshness gate above is computed on the cluster's newest member, so
+        # pairing it with an oldest-first link let a cluster qualify on a
+        # one-hour-old report and then ping the role about a day-and-a-half-old
+        # article headed "Breaking".
         best = min(direct, key=lambda m: (
             int(m.get("tier") or 9),
-            m.get("published_epoch") or float("inf"),
+            -(m.get("published_epoch") or 0),
             -len(m.get("title") or ""),
         ))
+        # And the LINKED item must itself be inside the window. Testing only
+        # the cluster leaves the same mismatch one step removed.
+        if (best.get("published_epoch") or 0) < cutoff:
+            details.append(f"skipped, freshest direct link is stale ({n} outlets): "
+                           f"{(best.get('title') or '')[:45]}")
+            continue
         title = best.get("title") or ""
         if _CRUDE_RE.search(title):
             logger.info("not pinging a crude headline: %s", title[:70])
@@ -659,9 +685,25 @@ async def maybe_post_digest(
             kind="digest",
         )
     except discord_client.DiscordFatalError as exc:
+        # Release even here. A fatal error latches the kill switch, so nothing
+        # will retry until an operator clears it -- but if they clear it the
+        # same evening, the digest must still be postable. Holding the claim
+        # would silently make today unrecoverable.
+        if not dry_run:
+            await storage.release_digest_claim(conn, date_key)
         return False, f"fatal: {exc}", 0, None
 
     if not (result.sent or result.dry_run):
+        # The claim was taken before posting, so a failed post MUST release it
+        # or today's digest can never be retried -- one rate-limit or one HTTP
+        # 400 would silently cost the whole day.
+        #
+        # This release used to live in an `elif not dry_run:` arm below, which
+        # was unreachable: reaching it required result.dry_run to be True, and
+        # that only happens when the dry_run parameter was True, so `not
+        # dry_run` was always False. The claim leaked on every real failure.
+        if not dry_run:
+            await storage.release_digest_claim(conn, date_key)
         return False, result.detail, 0, None
 
     if result.sent:
@@ -679,11 +721,6 @@ async def maybe_post_digest(
         await storage.mark_items_state(
             conn, sorted(set(sent_ids)), storage.STATE_SENT_DIGEST, f"digest {date_key}",
         )
-    elif not dry_run:
-        # The claim was taken before posting; a failed post must release it or
-        # today's digest could never be retried.
-        await storage.release_digest_claim(conn, date_key)
-
     return (result.sent, "posted" if result.sent else "dry-run preview only",
             len(rendered), result.message_id)
 
@@ -749,6 +786,14 @@ async def run_once(conn, cfg: dict, *, dry_run: bool = False, force_digest: bool
         report.digest_reason = reason
         report.digest_items = count
         report.digest_message_id = mid
+        # A returned failure used to land only in digest_reason, and main.py
+        # exits non-zero only when report.errors is non-empty -- so "rate
+        # limited", "HTTP 400 rejected the message" and "kill switch engaged"
+        # all exited 0, the same code as the benign "not 18:00 yet". Task
+        # Scheduler's Last Run Result therefore read 0 on a day nothing was
+        # posted, which is precisely the signal an operator relies on.
+        if not posted and not effective and not reason.startswith(_BENIGN_DIGEST):
+            report.errors.append(f"digest not posted: {reason}")
     except Exception as exc:
         logger.exception("digest stage failed")
         report.errors.append(f"digest: {exc}")
@@ -768,6 +813,17 @@ async def run_once(conn, cfg: dict, *, dry_run: bool = False, force_digest: bool
     if report.digest_posted and not effective:
         try:
             report.web_published, report.web_reason = await _publish_web_edition()
+            if not report.web_published:
+                report.errors.append(f"web publish: {report.web_reason}")
+            else:
+                broken = _linked_host_failed(report.web_reason)
+                if broken:
+                    # Something is live, so the run is not a write-off -- but
+                    # the digest links the host that failed, so every message
+                    # from here on points at a page that stopped updating.
+                    report.errors.append(
+                        f"web publish: {broken} is the host DIGEST_WEB_URL "
+                        f"points at, and it failed ({report.web_reason})")
         except Exception as exc:
             logger.exception("web publish stage failed")
             report.web_reason = f"error: {exc}"
@@ -788,7 +844,29 @@ async def run_once(conn, cfg: dict, *, dry_run: bool = False, force_digest: bool
 
 
 
-async def _publish_web_edition(timeout_s: int = 300) -> tuple[bool, str]:
+def _linked_host_failed(reason: str) -> str | None:
+    """
+    Did the host the digest actually LINKS to fail to publish?
+
+    A broken standby is a warning; a broken linked host means every digest from
+    now on points members at a page that has stopped updating, which is the one
+    web-publish failure worth failing the run over.
+    """
+    url = (os.environ.get("DIGEST_WEB_URL") or "").lower()
+    if not url:
+        return None
+    linked = ("cloudflare" if "pages.dev" in url
+              else "github" if "github.io" in url else None)
+    if not linked:
+        return None
+    return linked if f"{linked}=FAIL" in reason else None
+
+
+# Generous, because the inner steps are sequential and each has its own limit
+# (GitHub 180s + Cloudflare 300s in tools/publish_web.py). An outer timeout
+# below their sum would kill a healthy-but-slow deploy and report a timeout
+# that never really happened.
+async def _publish_web_edition(timeout_s: int = 600) -> tuple[bool, str]:
     """
     Rebuild and publish the public web edition.
 
@@ -816,6 +894,43 @@ async def _publish_web_edition(timeout_s: int = 300) -> tuple[bool, str]:
         except subprocess.TimeoutExpired:
             return False, f"deploy timed out after {timeout_s}s"
         out = ((r.stdout or "") + (r.stderr or "")).strip()
+
+        # Parse the per-host RESULT line rather than the tail.
+        #
+        # This used to keep out.splitlines()[-1], but cmd_build_web prints two
+        # fixed reminder lines AFTER the deploy output -- so the "status" was
+        # always the literal sentence "Only set it once you have opened that url
+        # in a logged-out browser.", recorded as web_reason and logged as
+        # "web publish ok" every single day no matter what happened. A publish
+        # that had been failing for months would have read as healthy.
+        #
+        # The line is searched for, not tailed, and is authoritative when
+        # present. WEB_DEPLOY_CMD is operator-configurable, so an arbitrary
+        # command that emits no RESULT line still falls back to the exit code.
+        targets: dict[str, str] = {}
+        for line in out.splitlines():
+            if line.strip().startswith("RESULT "):
+                for tok in line.split()[1:]:
+                    if "=" in tok:
+                        k, v = tok.split("=", 1)
+                        targets[k.strip()] = v.strip()
+
+        if targets:
+            failed = sorted(k for k, v in targets.items() if v != "ok")
+            summary = " ".join(f"{k}={v}" for k, v in sorted(targets.items()))
+            if not failed:
+                logger.info("web publish ok: %s", summary)
+                return True, summary
+            if len(failed) == len(targets):
+                logger.error("web publish failed on every host: %s", out[-800:])
+                return False, summary
+            # Partial: the page is live somewhere, so the run stands -- but say
+            # which host is broken, because a standby that quietly stopped
+            # working is worth nothing on the day it is needed.
+            logger.warning("web publish partial (%s failed): %s",
+                           ", ".join(failed), out[-800:])
+            return True, f"{summary} (partial)"
+
         tail = out.splitlines()[-1] if out else "no output"
         if r.returncode != 0:
             logger.warning("web publish failed (exit %s): %s", r.returncode, out[-800:])

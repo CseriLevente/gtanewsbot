@@ -61,11 +61,15 @@ def test_unknown_target_is_reported_not_ignored(stub):
 
 @pytest.mark.parametrize(("outcomes", "expected_exit"), [
     ([True, True], 0),
-    ([True, False], 0),    # redundancy is the point: one host is enough
-    ([False, True], 0),
+    # Partial gets its OWN code rather than 0. Redundancy still means the run
+    # stands -- the caller in src/runner.py treats 2 as published -- but a
+    # standby that quietly stopped working must not be indistinguishable from a
+    # clean run, which is exactly how it went unnoticed before.
+    ([True, False], 2),
+    ([False, True], 2),
     ([False, False], 1),   # nothing published anywhere
 ])
-def test_exit_code_succeeds_when_at_least_one_host_published(
+def test_exit_code_distinguishes_all_ok_from_partial_from_total_failure(
         monkeypatch, tmp_path, outcomes, expected_exit):
     page = tmp_path / "index.html"
     page.write_text("<!doctype html><title>x</title>", encoding="utf-8")
@@ -86,3 +90,93 @@ def test_missing_page_fails_before_touching_any_host(monkeypatch, tmp_path):
                         {"github": lambda: called.append(1) or Result("github", True, "")})
     assert publish_web.main() == 1
     assert not called, "attempted a deploy with no page built"
+
+
+# ---------------------------------------------------------------------------
+# The machine-readable RESULT line
+#
+# Its absence is what made a months-long publish failure read as healthy: the
+# caller kept out.splitlines()[-1], and cmd_build_web prints two fixed reminder
+# lines after the deploy, so the recorded "status" was a constant sentence.
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize(("outcomes", "expected"), [
+    ([True, True], "RESULT github=ok cloudflare=ok"),
+    ([True, False], "RESULT github=ok cloudflare=FAIL"),
+    ([False, False], "RESULT github=FAIL cloudflare=FAIL"),
+])
+def test_the_last_line_reports_every_host(monkeypatch, tmp_path, capsys,
+                                          outcomes, expected):
+    page = tmp_path / "index.html"
+    page.write_text("<!doctype html><title>x</title>", encoding="utf-8")
+    monkeypatch.setattr(publish_web, "PAGE", page)
+    monkeypatch.setenv("GTA6_PUBLISH_TARGETS", "github,cloudflare")
+    names = ["github", "cloudflare"]
+    monkeypatch.setattr(publish_web, "PUBLISHERS", {
+        n: (lambda n=n, ok=ok: Result(n, ok, "stub"))
+        for n, ok in zip(names, outcomes)
+    })
+    publish_web.main()
+    lines = [l for l in capsys.readouterr().out.strip().splitlines() if l.strip()]
+    assert lines[-1] == expected, "the RESULT line must be last on stdout"
+
+
+@pytest.mark.parametrize(("outcomes", "code"), [
+    ([True, True], 0),
+    ([True, False], 2),    # partial: live somewhere, but say so
+    ([False, False], 1),
+])
+def test_partial_success_has_its_own_exit_code(monkeypatch, tmp_path,
+                                              outcomes, code):
+    page = tmp_path / "index.html"
+    page.write_text("<!doctype html><title>x</title>", encoding="utf-8")
+    monkeypatch.setattr(publish_web, "PAGE", page)
+    monkeypatch.setenv("GTA6_PUBLISH_TARGETS", "github,cloudflare")
+    names = ["github", "cloudflare"]
+    monkeypatch.setattr(publish_web, "PUBLISHERS", {
+        n: (lambda n=n, ok=ok: Result(n, ok, "stub"))
+        for n, ok in zip(names, outcomes)
+    })
+    assert publish_web.main() == code
+
+
+def test_wrangler_is_pinned_not_latest():
+    """
+    @latest would refetch npm on every unattended deploy, and wrangler's Node
+    floor moves -- 4.127 needs Node 22 while Ubuntu 24.04's apt node is 18.
+    """
+    src = (publish_web.ROOT / "tools" / "publish_web.py").read_text(encoding="utf-8")
+    assert "wrangler@latest" not in src
+    assert 'CF_WRANGLER_VERSION' in src
+
+
+def test_the_outer_timeout_exceeds_the_sum_of_the_inner_ones():
+    from src import runner
+    import inspect
+    sig = inspect.signature(runner._publish_web_edition)
+    outer = sig.parameters["timeout_s"].default
+    assert outer >= publish_web.GITHUB_TIMEOUT_S + publish_web.CLOUDFLARE_TIMEOUT_S, (
+        "the caller would kill a healthy-but-slow deploy and report a phantom timeout")
+
+
+# ---------------------------------------------------------------------------
+# The caller's interpretation
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize(("result_line", "url", "expect_broken"), [
+    ("RESULT github=ok cloudflare=FAIL", "https://gta6-news.pages.dev/", "cloudflare"),
+    ("RESULT github=FAIL cloudflare=ok", "https://gta6-news.pages.dev/", None),
+    ("RESULT github=FAIL cloudflare=ok",
+     "https://cserilevente.github.io/gtanewsbot/", "github"),
+    ("RESULT github=ok cloudflare=ok", "https://gta6-news.pages.dev/", None),
+    ("RESULT github=ok cloudflare=FAIL", "", None),          # nothing linked yet
+])
+def test_only_a_failure_of_the_LINKED_host_is_escalated(
+        monkeypatch, result_line, url, expect_broken):
+    """
+    A broken standby is a warning. A broken linked host means every digest from
+    now on sends members to a page that has stopped updating.
+    """
+    from src import runner
+    monkeypatch.setenv("DIGEST_WEB_URL", url)
+    assert runner._linked_host_failed(result_line) == expect_broken

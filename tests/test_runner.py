@@ -375,3 +375,114 @@ def test_instant_alert_guard_refuses_short_titles():
         token="t", channel_id="c", title="GTA"))
     assert found is None
     assert "too short" in detail
+
+
+# ---------------------------------------------------------------------------
+# The digest claim must be released when a post fails
+#
+# maybe_post_digest claims the date key BEFORE posting, so that two concurrent
+# runs cannot both post. A failed post therefore has to give the claim back, or
+# the day is permanently burned: every later run sees "already posted" and the
+# digest for that date can never be sent.
+#
+# The release used to sit in an `elif not dry_run:` arm that was unreachable --
+# getting there required result.dry_run to be True, which only happens when the
+# dry_run parameter was True, making `not dry_run` False. So one rate-limit or
+# one HTTP 400 silently cost the whole day.
+# ---------------------------------------------------------------------------
+
+class _Failed:
+    sent = False
+    dry_run = False
+    detail = "rate limited (scope=user)"
+    message_id = None
+
+
+class _Fatal(Exception):
+    pass
+
+
+def _seed_digest_candidates(conn, n=4):
+    async def _s():
+        ids = []
+        for i in range(n):
+            ids.append(await _insert(
+                conn,
+                feed_key="vgc",
+                url_canonical=f"https://videogameschronicle.com/news/story-{i}",
+                url_original=f"https://videogameschronicle.com/news/story-{i}",
+                title=f"GTA 6 story number {i} with a properly long headline here",
+                title_hash=f"hash-digest-{i}",
+                source_name="VGC",
+                source_domain="videogameschronicle.com",
+                tier=2,
+                is_rumour=False,
+            ))
+        return ids
+    return _s()
+
+
+def test_a_failed_digest_post_releases_the_day(conn, cfg, monkeypatch):
+    from src import discord_client
+
+    monkeypatch.setenv("POSTING_ENABLED", "true")
+    monkeypatch.setenv("DISCORD_BOT_TOKEN", "fake-token")
+    monkeypatch.setenv("DISCORD_NEWS_CHANNEL_ID", "123")
+    monkeypatch.setenv("DIGEST_MIN_ITEMS", "1")
+
+    async def already_no(**kw):
+        return False, "not found"
+    monkeypatch.setattr(discord_client, "digest_already_in_channel", already_no)
+
+    async def fail_post(*a, **kw):
+        return _Failed()
+    monkeypatch.setattr(discord_client, "post_message", fail_post)
+
+    async def _t():
+        await _seed_digest_candidates(conn)
+        posted, reason, count, mid = await runner.maybe_post_digest(
+            conn, cfg, dry_run=False, force=True, health_line="t")
+        from src.clock import local_date_key, local_now
+        still_claimed = await storage.digest_already_posted(
+            conn, local_date_key(local_now()))
+        return posted, reason, still_claimed
+
+    posted, reason, still_claimed = run(_t())
+    assert posted is False
+    assert "rate limited" in reason
+    assert still_claimed is False, (
+        "the claim leaked: today's digest can now never be posted")
+
+
+def test_a_fatal_error_also_releases_the_day(conn, cfg, monkeypatch):
+    """
+    A 401/403 latches the kill switch, so nothing retries automatically -- but
+    if the operator clears it the same evening the digest must still be postable.
+    """
+    from src import discord_client
+
+    monkeypatch.setenv("POSTING_ENABLED", "true")
+    monkeypatch.setenv("DISCORD_BOT_TOKEN", "fake-token")
+    monkeypatch.setenv("DISCORD_NEWS_CHANNEL_ID", "123")
+    monkeypatch.setenv("DIGEST_MIN_ITEMS", "1")
+
+    async def already_no(**kw):
+        return False, "not found"
+    monkeypatch.setattr(discord_client, "digest_already_in_channel", already_no)
+
+    async def fatal_post(*a, **kw):
+        raise discord_client.DiscordFatalError("401 unauthorized")
+    monkeypatch.setattr(discord_client, "post_message", fatal_post)
+
+    async def _t():
+        await _seed_digest_candidates(conn)
+        posted, reason, _c, _m = await runner.maybe_post_digest(
+            conn, cfg, dry_run=False, force=True, health_line="t")
+        from src.clock import local_date_key, local_now
+        return posted, reason, await storage.digest_already_posted(
+            conn, local_date_key(local_now()))
+
+    posted, reason, still_claimed = run(_t())
+    assert posted is False
+    assert "fatal" in reason
+    assert still_claimed is False, "a fatal error burned the day"

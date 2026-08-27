@@ -275,6 +275,23 @@ def render_digest(
     return payload
 
 
+def _alert_content(role_id: str | None, lead: str, title: str) -> str:
+    """
+    The one line that becomes the phone's push notification.
+
+    Discord builds the mobile push and the channel-list preview from `content`
+    alone -- embed titles are not included. Both alert types previously set
+    content to nothing but "<@&role>", so the messages designed to wake a whole
+    community arrived as a bare ping with no words in it: the member had to open
+    Discord to find out whether it was a trailer or a nothing-burger.
+
+    Mentions stay safe because every caller pins allowed_mentions to the single
+    opt-in role, so markdown or an @everyone inside a headline cannot ping.
+    """
+    prefix = f"<@&{role_id}> " if role_id else ""
+    return _truncate(f"{prefix}{lead} — {title}", CONTENT_MAX)
+
+
 def render_instant_alert(
     entry: DigestEntry, *, role_id: str | None, health_line: str | None = None
 ) -> dict:
@@ -298,10 +315,8 @@ def render_instant_alert(
     if health_line:
         embed["footer"] = {"text": _truncate(health_line, EMBED_FOOTER_MAX)}
 
-    content = f"<@&{role_id}>" if role_id else None
     payload: dict = {"embeds": [embed]}
-    if content:
-        payload["content"] = _truncate(content, CONTENT_MAX)
+    payload["content"] = _alert_content(role_id, f"**{safe_source}**", title)
 
     payload["allowed_mentions"] = {
         "parse": [],
@@ -376,8 +391,8 @@ def render_breakout_alert(
         embed["footer"] = {"text": _truncate(health_line, EMBED_FOOTER_MAX)}
 
     payload: dict = {"embeds": [embed]}
-    if role_id:
-        payload["content"] = _truncate(f"<@&{role_id}>", CONTENT_MAX)
+    payload["content"] = _alert_content(
+        role_id, f"**{outlet_count} outlets**", title)
     payload["allowed_mentions"] = {
         "parse": [],
         "roles": [role_id] if role_id else [],

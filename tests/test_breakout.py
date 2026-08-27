@@ -183,14 +183,31 @@ def test_a_rumour_breakout_says_rumour_before_the_headline_detail():
         "a leak-sourced alert must be labelled where it cannot be missed")
 
 
-def test_no_role_means_no_content_and_no_role_mention():
+def test_no_role_means_words_but_no_mention():
     entry = digest.DigestEntry(
-        item_id=1, title="GTA 6 news", url="https://vgc.com/x",
-        source_name="VGC", label=credibility.LABEL_REPORT,
+        item_id=1, title="GTA 6 delayed to November 2026, Take-Two confirms",
+        url="https://vgc.com/x", source_name="VGC",
+        label=credibility.LABEL_REPORT,
     )
     p = digest.render_breakout_alert(entry, role_id=None, outlet_count=7)
-    assert "content" not in p
     assert p["allowed_mentions"]["roles"] == []
+    assert "<@&" not in p["content"], "must not mention anything without a role"
+    assert entry.title in p["content"], (
+        "the channel preview and mobile push come from content, so it needs words")
+
+
+def test_the_breakout_push_line_leads_with_the_outlet_count():
+    """The count is the evidence, and it is what makes the ping justified."""
+    entry = digest.DigestEntry(
+        item_id=1, title="Rockstar issues statement on GTA 6 gameplay leaks",
+        url="https://vgc.com/x", source_name="VGC",
+        label=credibility.LABEL_RUMOUR,
+    )
+    content = digest.render_breakout_alert(
+        entry, role_id="99", outlet_count=26)["content"]
+    assert content.startswith("<@&99> ")
+    assert "26 outlets" in content
+    assert entry.title in content
 
 
 # ---------------------------------------------------------------------------

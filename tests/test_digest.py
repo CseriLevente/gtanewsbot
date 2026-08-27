@@ -55,13 +55,28 @@ def test_instant_alert_pings_exactly_one_role():
     am = p["allowed_mentions"]
     assert am["parse"] == []
     assert am["roles"] == ["99887766"]
-    assert p["content"] == "<@&99887766>"
+    assert p["content"].startswith("<@&99887766> ")
+
+
+def test_the_alert_content_carries_the_headline():
+    """
+    Discord builds the mobile push notification and the channel preview from
+    `content` alone; embed titles are not included. content used to be nothing
+    but the role mention, so the one message type meant to wake the community
+    arrived on a phone as a ping with no words in it.
+    """
+    e = entry(1, label=credibility.LABEL_OFFICIAL)
+    for p in (render_instant_alert(e, role_id="99887766"),
+              render_instant_alert(e, role_id=None)):
+        assert e.title in p["content"], p["content"]
 
 
 def test_instant_alert_without_role_does_not_ping():
     p = render_instant_alert(entry(1, label=credibility.LABEL_OFFICIAL), role_id=None)
     assert p["allowed_mentions"]["roles"] == []
-    assert "content" not in p
+    # It still carries words, so the channel preview is readable -- but it must
+    # mention nothing at all.
+    assert "<@&" not in p["content"]
 
 
 def test_missing_allowed_mentions_is_rejected():

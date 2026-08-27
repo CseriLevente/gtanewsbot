@@ -33,6 +33,20 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 PAGE = ROOT / "web" / "index.html"
 
+GITHUB_TIMEOUT_S = 180
+CLOUDFLARE_TIMEOUT_S = 300
+
+# The final line of stdout, so a caller reading only the tail can still tell
+# what happened per host. src/runner.py parses this; keep the shape stable.
+RESULT_PREFIX = "RESULT"
+
+# Exit codes. Distinguishing partial from total is the point: the caller keeps
+# running either way, but a partial failure must be reportable rather than
+# indistinguishable from a clean run.
+EXIT_ALL_OK = 0
+EXIT_TOTAL_FAILURE = 1
+EXIT_PARTIAL = 2
+
 
 @dataclasses.dataclass
 class Result:
@@ -46,7 +60,7 @@ def _publish_github() -> Result:
     """Delegate to the GitHub Pages helper rather than reimplementing it."""
     r = subprocess.run(
         [sys.executable, str(ROOT / "tools" / "deploy_pages.py")],
-        cwd=ROOT, capture_output=True, text=True, timeout=180,
+        cwd=ROOT, capture_output=True, text=True, timeout=GITHUB_TIMEOUT_S,
     )
     out = ((r.stdout or "") + (r.stderr or "")).strip()
     url = next((l.strip() for l in out.splitlines()
@@ -57,18 +71,28 @@ def _publish_github() -> Result:
 
 def _publish_cloudflare() -> Result:
     project = os.environ.get("CF_PAGES_PROJECT", "gta6-news")
+    # PINNED, not @latest. Two reasons, both learned the hard way:
+    #   * @latest refetches from npm on every deploy, so an unattended nightly
+    #     job runs whatever was published to npm that day -- a supply-chain
+    #     exposure we would not accept anywhere else in this project;
+    #   * wrangler's Node floor moves. 4.127 needs Node >= 22, and a distro
+    #     whose apt node is 18 (Ubuntu 24.04 ships 18.19) cannot run it at all.
+    #     Pinning makes that a decision rather than a surprise upgrade.
+    version = os.environ.get("CF_WRANGLER_VERSION", "4.127.0")
     env = dict(os.environ)
     # Discourage any interactive prompt: under Task Scheduler there is no
     # console, so a prompt is an invisible hang rather than a visible question.
     env["CI"] = "1"
     env["WRANGLER_SEND_METRICS"] = "false"
-    cmd = ["npx", "--yes", "wrangler@latest", "pages", "deploy", "web",
+    cmd = ["npx", "--yes", f"wrangler@{version}", "pages", "deploy", "web",
            "--project-name=" + project, "--commit-dirty=true"]
     try:
         r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
-                           timeout=420, env=env, shell=(os.name == "nt"))
+                           timeout=CLOUDFLARE_TIMEOUT_S, env=env,
+                           shell=(os.name == "nt"))
     except subprocess.TimeoutExpired:
-        return Result("cloudflare", False, "timed out after 420s")
+        return Result("cloudflare", False,
+                      f"timed out after {CLOUDFLARE_TIMEOUT_S}s")
     out = ((r.stdout or "") + (r.stderr or "")).strip()
     url = ""
     for line in out.splitlines():
@@ -127,7 +151,16 @@ def main() -> int:
               + str(len(results)) + " hosts; failed: "
               + ", ".join(r.target for r in failed), file=sys.stderr)
 
-    return 0 if len(failed) < len(results) else 1
+    # LAST line, deliberately. The caller in src/runner.py used to keep only
+    # out.splitlines()[-1] as its status, which meant it recorded whatever
+    # sentence happened to be printed last -- a constant string -- and logged
+    # "web publish ok" every day regardless of what happened.
+    print(RESULT_PREFIX + " " + " ".join(
+        r.target + "=" + ("ok" if r.ok else "FAIL") for r in results))
+
+    if not failed:
+        return EXIT_ALL_OK
+    return EXIT_TOTAL_FAILURE if len(failed) == len(results) else EXIT_PARTIAL
 
 
 if __name__ == "__main__":
