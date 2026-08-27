@@ -32,6 +32,10 @@ Milestone 1 is complete: polling, dedup, credibility tiering, digest rendering,
 scheduling, and a dry-run preview. **No LLM summarisation yet** — digest lines are
 headline + source + link. Milestone 2 adds Claude summaries.
 
+**Running it on a server?** See **[DEPLOY.md](DEPLOY.md)** — systemd timer,
+Windows Task Scheduler, and the one thing that catches everyone out (the bot
+uses the server's local clock, so the server timezone matters).
+
 ## Quick start
 
 ```bash
