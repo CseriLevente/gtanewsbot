@@ -16,3 +16,8 @@ infra/gta6-news-bot-task.xml
 
 # Build output — regenerate with `python -m src.main build-web`.
 web/
+
+# Wrangler's local cache. Holds the Cloudflare account id it last used;
+# not a credential (the OAuth token lives in the user profile), but it is
+# machine state and has no business in the repo.
+.wrangler/
