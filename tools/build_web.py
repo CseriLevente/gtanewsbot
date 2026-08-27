@@ -11,7 +11,10 @@ carried them, that count is the most prominent element in each row, and every
 outlet is listed as a link so a reader can go straight to the original.
 
 Run:  python tools/build_web.py
-Then: publish web/index.html as an artifact.
+Output is a complete standalone HTML document, servable by any static host.
+It must declare its own charset and viewport: without them a browser guesses
+the encoding (every apostrophe becomes mojibake) and phones render it at
+desktop width.
 """
 from __future__ import annotations
 
@@ -26,6 +29,14 @@ DATA = ROOT / "data" / "web_edition.json"
 OUT = ROOT / "web" / "index.html"
 
 LABELS = {"official": "Official", "report": "Report", "rumour": "Rumour"}
+
+# Inlined so the page has no external image dependency and no favicon 404.
+FAVICON = (
+    "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 3"
+    "2'%3E%3Crect width='32' height='32' rx='7' fill='%23A31D5B'/%3E%3Ctext x"
+    "='16' y='23' font-family='Georgia,serif' font-size='19' font-weight='7"
+    "00' fill='%23fff' text-anchor='middle'%3EW%3C/text%3E%3C/svg%3E"
+)
 
 
 def esc(value) -> str:
@@ -232,14 +243,35 @@ def main() -> int:
     counts = {k: sum(1 for s in d["stories"] if s["label"] == k) for k in LABELS}
     stories = "\n".join(render_story(s) for s in d["stories"])
 
+    blurb = (
+        "Every GTA 6 story our feeds carried today: "
+        + str(d["total_stories"]) + " stories from " + str(d["total_items"])
+        + " articles, grouped by event and ranked by how many outlets ran it."
+    )
+
     parts = [
+        "<!doctype html>",
+        '<html lang="en">',
+        "<head>",
+        '<meta charset="utf-8">',
+        '<meta name="viewport" content="width=device-width, initial-scale=1">',
+        '<meta name="color-scheme" content="light dark">',
         "<title>Vice City Wire</title>",
+        '<meta name="description" content="' + esc(blurb) + '">',
+        '<meta property="og:type" content="website">',
+        '<meta property="og:site_name" content="Vice City Wire">',
+        '<meta property="og:title" content="Vice City Wire">',
+        '<meta property="og:description" content="' + esc(blurb) + '">',
+        '<meta name="twitter:card" content="summary">',
+        '<link rel="icon" href="' + FAVICON + '">',
         '<link rel="preconnect" href="https://fonts.googleapis.com">',
         '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>',
         '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?'
         "family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600"
         '&family=Instrument+Serif:ital@0;1&display=swap">',
         "<style>" + CSS + "</style>",
+        "</head>",
+        "<body>",
         '<div class="wrap">',
         '  <header class="masthead">',
         '    <p class="eyebrow">Leonida desk / automated wire</p>',
@@ -280,6 +312,8 @@ def main() -> int:
         " URL could not be resolved.</span>",
         "  </footer>",
         "</div>",
+        "</body>",
+        "</html>",
     ]
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text("\n".join(parts) + "\n", encoding="utf-8")
