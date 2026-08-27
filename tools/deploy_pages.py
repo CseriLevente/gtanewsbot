@@ -74,14 +74,30 @@ def main() -> int:
         ("git", "hash-object", "-w", "--stdin"), cwd=ROOT, input="",
         capture_output=True, text=True, check=True).stdout.strip()
 
+    # Fed as BYTES, deliberately. With text=True, Python's newline translation
+    # turns each "\n" into "\r\n" on Windows, git mktree takes the CR as part of
+    # the filename, and the branch ends up holding "index.html\r" -- which
+    # GitHub Pages cannot find, so the site 404s while the push, the branch and
+    # the file contents all look perfectly correct.
     tree_spec = ("100644 blob " + blob + "\tindex.html\n"
-                 "100644 blob " + empty + "\t.nojekyll\n")
+                 "100644 blob " + empty + "\t.nojekyll\n").encode("utf-8")
     r = subprocess.run(("git", "mktree"), cwd=ROOT, input=tree_spec,
-                       capture_output=True, text=True)
+                       capture_output=True)
     if r.returncode != 0:
-        print("git mktree failed: " + r.stderr.strip(), file=sys.stderr)
+        print("git mktree failed: " + r.stderr.decode("utf-8", "replace").strip(),
+              file=sys.stderr)
         return 1
-    tree = r.stdout.strip()
+    tree = r.stdout.decode("ascii").strip()
+
+    # Assert the names came back exactly right. This is the failure above: every
+    # other signal (exit code, push output, blob contents) stayed green while the
+    # published site was a 404.
+    listing = git("ls-tree", "--name-only", tree)
+    names = listing.split("\n") if listing else []
+    if sorted(names) != [".nojekyll", "index.html"]:
+        print("refusing to publish: unexpected tree entries " + repr(names),
+              file=sys.stderr)
+        return 1
 
     # Skip a pointless push when the page has not changed. Saves a force-push
     # (and a Pages rebuild) on any day the bot runs but nothing new landed.
