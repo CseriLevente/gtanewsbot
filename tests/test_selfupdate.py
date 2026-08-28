@@ -252,3 +252,31 @@ def test_a_feature_branch_is_not_dragged_onto_main(repo):
     assert updated is False
     assert "experiment" in detail
     assert git(clone, "rev-parse", "HEAD") == head
+
+
+def test_two_installs_on_one_machine_do_not_silence_each_other(tmp_path, monkeypatch):
+    """
+    The stamp used to be a single fixed filename in the shared state directory,
+    so whichever checkout ran first suppressed the other's update check for an
+    hour. Found by cloning the repo next to the working copy and watching the
+    clone refuse to update.
+    """
+    state = tmp_path / "state"
+    monkeypatch.setattr(paths, "app_data_dir", lambda: str(state))
+
+    monkeypatch.setattr(paths, "PROJECT_ROOT", str(tmp_path / "install-a"))
+    a = selfupdate._stamp_path()
+    monkeypatch.setattr(paths, "PROJECT_ROOT", str(tmp_path / "install-b"))
+    b = selfupdate._stamp_path()
+
+    assert a != b, "both installs share one stamp file"
+    assert os.path.dirname(a) == str(state), "the stamp must stay out of the repo"
+
+
+def test_the_same_install_keeps_the_same_stamp(tmp_path, monkeypatch):
+    monkeypatch.setattr(paths, "app_data_dir", lambda: str(tmp_path / "state"))
+    monkeypatch.setattr(paths, "PROJECT_ROOT", str(tmp_path / "install"))
+    first = selfupdate._stamp_path()
+    monkeypatch.setattr(paths, "PROJECT_ROOT", str(tmp_path / "install") + os.sep)
+    assert selfupdate._stamp_path() == first, (
+        "a trailing separator produced a different stamp, so the interval reset")

@@ -84,7 +84,24 @@ def _git(*args: str, timeout: int = 60) -> tuple[int, str]:
 
 
 def _stamp_path() -> str:
-    return os.path.join(paths.app_data_dir(), STAMP_NAME)
+    """
+    Per-INSTALL, not per-machine.
+
+    The stamp lived at a single fixed name under the shared state directory,
+    which meant two checkouts on one machine silenced each other's update
+    checks: whichever ran first wrote the stamp, and the second saw a fresh
+    timestamp and skipped for an hour. Caught by actually cloning the repo
+    alongside the working copy and watching the clone refuse to update.
+
+    Keying on the checkout path keeps the state out of the repo (so it can never
+    dirty the working tree) while making installs independent.
+    """
+    import hashlib
+    key = hashlib.blake2b(
+        os.path.abspath(paths.PROJECT_ROOT).casefold().encode("utf-8"),
+        digest_size=6,
+    ).hexdigest()
+    return os.path.join(paths.app_data_dir(), f"{STAMP_NAME}-{key}")
 
 
 def _due(interval_s: int) -> bool:
