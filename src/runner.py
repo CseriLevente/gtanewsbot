@@ -864,6 +864,7 @@ async def run_once(conn, cfg: dict, *, dry_run: bool = False, force_digest: bool
             report.errors.append(f"web publish: {exc}")
 
     await _escalate_operator_alerts(conn, report)
+    await _ping_healthcheck(report)
 
     # Write the whole report to the LOG, not just the console.
     #
@@ -974,6 +975,35 @@ async def _publish_web_edition(timeout_s: int = 600) -> tuple[bool, str]:
 
     # Keep the event loop responsive; the deploy is a blocking subprocess.
     return await asyncio.to_thread(_run)
+
+
+async def _ping_healthcheck(report: RunReport) -> None:
+    """
+    Tell an external watchdog the run happened. Silent if HEALTHCHECK_URL is unset.
+
+    This is the only monitoring that survives the bot being DEAD. Everything else
+    the project has -- the log, the exit code, the operator alerts posted to
+    Discord -- requires the bot to run in order to report. A process that never
+    starts, a machine that never boots, or a scheduler entry someone disabled
+    produces perfect silence, and silence is indistinguishable from a quiet news
+    day. A dead-man switch inverts that: the watchdog alerts when the ping STOPS.
+
+    Compatible with healthchecks.io and anything sharing its convention: GET the
+    URL on success, GET <url>/fail when the run reported errors.
+
+    Deliberately last, deliberately never fatal, and given a short timeout: a
+    monitoring endpoint must not be able to break the thing it monitors.
+    """
+    url = _env("HEALTHCHECK_URL")
+    if not url:
+        return
+    target = url.rstrip("/") + "/fail" if report.errors else url
+    try:
+        import httpx
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            await client.get(target)
+    except Exception as exc:                     # noqa: BLE001 - never fatal
+        logger.warning("healthcheck ping failed: %s: %s", type(exc).__name__, exc)
 
 
 async def _escalate_operator_alerts(conn, report: RunReport) -> None:

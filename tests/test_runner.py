@@ -11,6 +11,8 @@ then never fire. It would have eaten the GTA 6 Extended Look announcement.
 """
 from __future__ import annotations
 
+import pytest
+
 from src import credibility, runner, storage
 from tests.conftest import run
 
@@ -486,3 +488,63 @@ def test_a_fatal_error_also_releases_the_day(conn, cfg, monkeypatch):
     assert posted is False
     assert "fatal" in reason
     assert still_claimed is False, "a fatal error burned the day"
+
+
+# ---------------------------------------------------------------------------
+# The dead-man ping
+#
+# The only monitoring that survives the bot being DEAD. Every other signal the
+# project has — the log, the exit code, the Discord operator alerts — requires
+# the bot to run in order to report anything.
+# ---------------------------------------------------------------------------
+
+def test_no_healthcheck_url_means_no_request(monkeypatch):
+    monkeypatch.delenv("HEALTHCHECK_URL", raising=False)
+    called = []
+    import httpx
+    monkeypatch.setattr(httpx, "AsyncClient",
+                        lambda *a, **k: called.append(1))
+    run(runner._ping_healthcheck(runner.RunReport()))
+    assert not called
+
+
+@pytest.mark.parametrize(("errors", "expected_suffix"), [
+    ([], ""),
+    (["digest not posted: rate limited"], "/fail"),
+])
+def test_a_failed_run_pings_the_fail_endpoint(monkeypatch, errors, expected_suffix):
+    monkeypatch.setenv("HEALTHCHECK_URL", "https://hc-ping.test/abc")
+    seen = {}
+
+    class _FakeClient:
+        def __init__(self, *a, **k):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        async def get(self, url):
+            seen["url"] = url
+
+    import httpx
+    monkeypatch.setattr(httpx, "AsyncClient", _FakeClient)
+    rep = runner.RunReport()
+    rep.errors = list(errors)
+    run(runner._ping_healthcheck(rep))
+    assert seen["url"] == "https://hc-ping.test/abc" + expected_suffix
+
+
+def test_a_broken_watchdog_cannot_break_the_run(monkeypatch):
+    """Monitoring must never be able to take down the thing it monitors."""
+    monkeypatch.setenv("HEALTHCHECK_URL", "https://hc-ping.test/abc")
+
+    class _Exploding:
+        def __init__(self, *a, **k):
+            raise RuntimeError("network on fire")
+
+    import httpx
+    monkeypatch.setattr(httpx, "AsyncClient", _Exploding)
+    run(runner._ping_healthcheck(runner.RunReport()))     # must not raise

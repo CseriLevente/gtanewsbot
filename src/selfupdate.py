@@ -231,3 +231,60 @@ def check_and_update() -> tuple[bool, str]:
 
     logger.info("self-update: %s", detail)
     return True, detail
+
+
+def preflight() -> tuple[list[str], list[str]]:
+    """
+    Can this install actually keep itself up to date? Returns (problems, notes).
+
+    Called by `check-ready`, because every failure mode here is silent at
+    runtime: the bot keeps polling and posting perfectly on whatever code it has
+    while the update quietly fails on every run. The one that motivated this is
+    a hardened systemd unit -- ProtectSystem=strict with the project directory
+    left out of ReadWritePaths makes the checkout read-only, so `git merge`
+    fails forever and nothing about the digest looks wrong.
+    """
+    problems: list[str] = []
+    notes: list[str] = []
+
+    if not _env_bool("AUTO_UPDATE", True):
+        return [], ["auto-update is disabled (AUTO_UPDATE=false)"]
+
+    if not os.path.isdir(os.path.join(paths.PROJECT_ROOT, ".git")):
+        return [], ["not a git checkout, so auto-update is inactive; "
+                    "install with `git clone` if you want upstream fixes"]
+
+    code, out = _git("--version")
+    if code != 0:
+        problems.append(f"AUTO_UPDATE is on but git is unusable: {out[:120]}")
+        return problems, notes
+
+    # Writable checkout. os.access is unreliable for this on Windows, and a
+    # real write is what git will attempt anyway.
+    probe = os.path.join(paths.PROJECT_ROOT, ".selfupdate-write-probe")
+    try:
+        with open(probe, "w", encoding="utf-8") as fh:
+            fh.write("probe")
+        os.remove(probe)
+    except OSError as exc:
+        problems.append(
+            f"the project directory is not writable ({exc.__class__.__name__}), so "
+            f"auto-update will fail on every run while the bot otherwise looks "
+            f"healthy. On systemd, add {paths.PROJECT_ROOT} to ReadWritePaths."
+        )
+
+    remote = _env("AUTO_UPDATE_REMOTE", "origin")
+    branch = _env("AUTO_UPDATE_BRANCH", "main")
+    code, out = _git("symbolic-ref", "--quiet", "--short", "HEAD")
+    if code != 0 or not out:
+        notes.append("detached HEAD: pinned to a commit, auto-update will not move it")
+    elif out != branch:
+        notes.append(f"on branch {out}, tracking {branch}: auto-update will not run")
+
+    code, out = _git("ls-remote", "--exit-code", remote, f"refs/heads/{branch}", timeout=45)
+    if code != 0:
+        problems.append(f"cannot reach {remote}/{branch}: {out[:140]}")
+    else:
+        notes.append(f"tracking {remote}/{branch}, currently at {current_revision()}")
+
+    return problems, notes

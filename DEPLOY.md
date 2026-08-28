@@ -77,6 +77,39 @@ Read that output. It prints what it *would* post. Leave
 `POSTING_ENABLED=false` for a day or two first — every command behaves as a dry
 run while it is false, regardless of flags.
 
+### 3b. Clear the backlog, and add a watchdog
+
+**If you copied `bot.db` across**, deal with the backlog first. The digest
+selects by state, not by a time window, and posts at most 8 stories a day — so a
+few hundred carried-over items do not flood the channel, they do something
+worse: they trickle week-old news into the top slots for weeks, because ranking
+is by how many outlets carried a story and an old story has had longer to
+accumulate them.
+
+```bash
+.venv/bin/python -m src.main mark-caught-up
+```
+
+It prints the count and does nothing until you re-run it with `--yes`. Use
+`--older-than-hours 48` to keep the last two days and retire the rest.
+
+**Add a dead-man switch.** This is the only monitoring that survives the bot
+being dead — the log, the exit code and the Discord operator alerts all require
+the bot to run in order to report anything, and a process that never starts
+produces perfect silence, which looks exactly like a quiet news day.
+
+Create a check at [healthchecks.io](https://healthchecks.io) (free tier is
+ample), set the period to 20 minutes with a 40-minute grace, and put its URL in
+`.env`:
+
+```bash
+HEALTHCHECK_URL=https://hc-ping.com/your-uuid-here
+```
+
+The bot pings it at the end of every run, and pings `<url>/fail` when the run
+reported errors. Point the alert at your email and a Discord webhook. Nothing
+else in this deployment will tell you the machine died.
+
 ### 4. Schedule it
 
 systemd timer, in preference to cron, because the journal gives you the run
@@ -95,13 +128,31 @@ Type=oneshot
 User=gta6
 WorkingDirectory=/opt/gta6-news-bot
 ExecStart=/opt/gta6-news-bot/.venv/bin/python -m src.main run
-# The bot writes only to its state dir and its own logs.
+
+# A run that also publishes the web edition can take several minutes. Type=oneshot
+# inherits DefaultTimeoutStartSec (90s on most distros), which would kill it
+# mid-deploy and report a failure that never really happened.
+TimeoutStartSec=900
+
 PrivateTmp=true
 NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=read-only
-ReadWritePaths=/opt/gta6-news-bot/logs /home/gta6/.local/state
+
+# The CHECKOUT ITSELF must be writable. The bot fast-forwards it to origin/main
+# on every run and installs into .venv when requirements.txt changes, so with
+# ProtectSystem=strict and the project directory left out of ReadWritePaths the
+# update fails on every single run -- while polling, alerts and the digest all
+# keep working perfectly. That is the worst shape a bug can have here: the
+# deployment silently freezes on the code it was installed with and nothing
+# looks wrong. `check-ready` now tests for exactly this.
+#
+# logs/ lives inside the project directory, so it is covered by the same entry.
+ReadWritePaths=/opt/gta6-news-bot /home/gta6/.local/state
 ```
+
+If you put the checkout under `/home` instead of `/opt`, drop
+`ProtectHome=read-only` or the same freeze applies.
 
 `/etc/systemd/system/gta6-news-bot.timer`:
 

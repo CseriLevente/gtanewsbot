@@ -24,6 +24,7 @@ import asyncio
 import logging
 import os
 import sys
+import time
 
 from dotenv import load_dotenv
 
@@ -250,6 +251,15 @@ def cmd_check_ready(args: argparse.Namespace) -> None:
         print(f"OK   feedparser {feeds.FEEDPARSER_VERSION}")
     else:
         problems.append('feedparser not installed — run: pip install "feedparser==6.0.14"')
+
+    from src import selfupdate as _su
+    print("\n--- Updates ---")
+    up_problems, up_notes = _su.preflight()
+    for n in up_notes:
+        print(f"OK   {n}")
+    for p in up_problems:
+        print(f"FAIL {p}")
+    problems.extend(up_problems)
 
     db = paths.db_path()
     print(f"\n--- Database ---\npath: {db}")
@@ -589,6 +599,59 @@ def cmd_automod_apply(args: argparse.Namespace) -> None:
 
 
 
+def cmd_mark_caught_up(args: argparse.Namespace) -> None:
+    """
+    Treat everything currently unsent as already covered.
+
+    Needed when moving an install, or when standing one up beside a channel that
+    already has history. The digest selects by STATE, not by a time window, and
+    posts at most 8 stories a day -- so a carried-over backlog of a few hundred
+    items does not flood the channel, it does something worse: it trickles
+    week-old news into the top slots for weeks, because ranking is by how many
+    outlets carried a story and an old story has had longer to accumulate them.
+
+    This is deliberately a separate command rather than something a migration
+    script does silently: it discards editorial content, and that should be an
+    explicit act.
+    """
+    async def _run() -> None:
+        conn, _ = await _open()
+        try:
+            cutoff = None
+            if args.older_than_hours > 0:
+                cutoff = time.time() - args.older_than_hours * 3600
+                sql = ("SELECT id FROM items WHERE state IN (?, ?) "
+                       "AND (published_epoch IS NULL OR published_epoch < ?)")
+                params = (storage.STATE_NEW, storage.STATE_HELD, cutoff)
+            else:
+                sql = "SELECT id FROM items WHERE state IN (?, ?)"
+                params = (storage.STATE_NEW, storage.STATE_HELD)
+
+            async with conn.execute(sql, params) as cur:
+                ids = [int(r["id"]) for r in await cur.fetchall()]
+
+            if not ids:
+                print("Nothing unsent — already caught up.")
+                return
+
+            scope = (f"published more than {args.older_than_hours}h ago"
+                     if cutoff else "in the backlog")
+            print(f"{len(ids)} unsent item(s) {scope} will be marked as already covered.")
+            print("They will never appear in a digest. This cannot be undone.")
+            if not args.yes:
+                print("\nRe-run with --yes to proceed.")
+                return
+
+            await storage.mark_items_state(
+                conn, ids, storage.STATE_SENT_DIGEST, "marked caught up")
+            print(f"Marked {len(ids)} item(s).")
+            print(f"States now: {await storage.count_items_by_state(conn)}")
+        finally:
+            await conn.close()
+
+    asyncio.run(_run())
+
+
 def cmd_prune(args: argparse.Namespace) -> None:
     async def _run() -> None:
         conn, _ = await _open()
@@ -780,6 +843,14 @@ def build_parser() -> argparse.ArgumentParser:
                       help="Delete dropped/sent rows older than this (default 30)")
     p_pr.add_argument("--dry-run", action="store_true", help="Show what would change")
     p_pr.set_defaults(func=cmd_prune)
+
+    p_cu = sub.add_parser(
+        "mark-caught-up",
+        help="Treat the current unsent backlog as already covered (use before a migration)")
+    p_cu.add_argument("--older-than-hours", type=int, default=0,
+                      help="Only items published more than N hours ago (default 0 = all)")
+    p_cu.add_argument("--yes", action="store_true", help="Skip the confirmation")
+    p_cu.set_defaults(func=cmd_mark_caught_up)
 
     p_mt = sub.add_parser("make-task",
                           help="Generate the Task Scheduler XML for this machine")
