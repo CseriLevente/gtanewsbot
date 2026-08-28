@@ -771,9 +771,18 @@ async def run_once(conn, cfg: dict, *, dry_run: bool = False, force_digest: bool
     try:
         report.updated, report.update_detail = selfupdate.check_and_update()
         report.revision = selfupdate.current_revision()
+        # A DELIBERATE skip (local edits, a pin, a feature branch) is normal and
+        # stays quiet. A real failure must not be: a deployment whose update has
+        # been broken for months keeps polling and posting perfectly, so nothing
+        # else in the system will ever mention it. The one that motivated this is
+        # a checkout owned by a different user than the service account, which
+        # makes every git call fail while the bot looks entirely healthy.
+        if report.update_detail and not report.update_detail.startswith("skipped:"):
+            report.errors.append(f"self-update: {report.update_detail}")
     except Exception as exc:               # noqa: BLE001 - never fatal
         logger.exception("self-update stage failed")
         report.update_detail = f"error: {exc}"
+        report.errors.append(f"self-update: {exc}")
 
     # NOTE: an in-process write-persistence canary was tried here and is
     # useless for this failure — the scheduled process reads back its own

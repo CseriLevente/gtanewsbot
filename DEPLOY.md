@@ -38,17 +38,49 @@ want and accept that it drifts by an hour across DST.
 
 ## Linux (recommended)
 
-### 1. Install
+### 0. Prerequisites
+
+* **Python 3.9+** (3.12 is what it is developed and tested on; Ubuntu 24.04
+  ships 3.12, which is fine). No packaging metadata declares this, so it is
+  stated here.
+* **git** — required, not optional: the bot keeps itself current by
+  fast-forwarding its own checkout.
+* ~300 MB disk, outbound HTTPS to `discord.com`, `github.com`, the feed hosts,
+  and `hc-ping.com` if you use the watchdog.
+* **Node 22+ ONLY if this server publishes to Cloudflare.** `apt` on Ubuntu
+  24.04 ships Node 18.19, which cannot run the pinned wrangler. The
+  GitHub-Pages-only path needs no Node at all, which is a real reason to prefer
+  it on a server. See Step 5.
+* Discord side already done — see [SETUP-DISCORD.md](SETUP-DISCORD.md).
+
+### 1. Create the service account and directories
+
+The unit in Step 6 runs as `gta6` out of `/opt/gta6-news-bot` and needs
+`/home/gta6/.local/state` to already exist — systemd refuses to start a unit
+whose `ReadWritePaths=` names a missing path.
+
+```bash
+sudo useradd --create-home --home-dir /home/gta6 --shell /usr/sbin/nologin gta6
+sudo install -d -o gta6 -g gta6 -m 755 /opt/gta6-news-bot
+sudo install -d -o gta6 -g gta6 -m 700 /home/gta6/.local/state
+```
+
+**Clone as `gta6`, never as root.** A root-owned checkout that the service runs
+as `gta6` makes every git call fail with *"detected dubious ownership"*, which
+freezes auto-update — and until recently reported itself as a deliberate pin.
+`check-ready` now catches it, but not creating the problem is better.
+
+### 2. Install
 
 ```bash
 sudo apt install -y python3 python3-venv git
-git clone <your-repo-url> gta6-news-bot
-cd gta6-news-bot
-python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt
+sudo -u gta6 git clone https://github.com/CseriLevente/gtanewsbot.git /opt/gta6-news-bot
+cd /opt/gta6-news-bot
+sudo -u gta6 python3 -m venv .venv
+sudo -u gta6 .venv/bin/pip install -r requirements.txt
 ```
 
-### 2. Configure
+### 3. Configure
 
 ```bash
 cp .env.example .env
@@ -66,7 +98,7 @@ chmod 600 .env        # it holds a live bot token
 `check-ready` exits non-zero and tells you what is missing. Fix everything it
 reports before enabling posting.
 
-### 3. Initialise and rehearse
+### 4. Initialise and rehearse
 
 ```bash
 .venv/bin/python -m src.main init-db
@@ -77,7 +109,22 @@ Read that output. It prints what it *would* post. Leave
 `POSTING_ENABLED=false` for a day or two first — every command behaves as a dry
 run while it is false, regardless of flags.
 
-### 3b. Clear the backlog, and add a watchdog
+### 5. Decide how THIS server publishes the site
+
+**Do this before scheduling anything.** A `.env` handed to you from another
+machine will contain `WEB_DEPLOY_CMD` and `DIGEST_WEB_URL`, and this server can
+almost certainly authenticate to neither host — so the site publish fails every
+evening, the run exits non-zero, and the watchdog you are about to add pages you
+nightly. The three options are in
+[Handing this to someone else](#2-do-not-give-anyone-your-github-push-rights);
+the simplest is `WEB_DEPLOY_CMD=` empty, leaving the site published from wherever
+it is published today.
+
+Also check `POSTING_ENABLED`. A handed `.env` usually has it `true`; set it to
+`false` until Step 8 if you want to rehearse first, and tell the owner the
+channel will be quiet until then.
+
+### 6. Clear the backlog, and add a watchdog
 
 **If you copied `bot.db` across**, deal with the backlog first. The digest
 selects by state, not by a time window, and posts at most 8 stories a day — so a
@@ -110,7 +157,7 @@ The bot pings it at the end of every run, and pings `<url>/fail` when the run
 reported errors. Point the alert at your email and a Discord webhook. Nothing
 else in this deployment will tell you the machine died.
 
-### 4. Schedule it
+### 7. Schedule it
 
 systemd timer, in preference to cron, because the journal gives you the run
 history that a home-grown cron redirect does not.
@@ -297,7 +344,7 @@ WEB_DEPLOY_CMD=python tools/publish_web.py
 
 # ...or a single host:
 WEB_DEPLOY_CMD=python tools/deploy_pages.py                    # GitHub Pages
-WEB_DEPLOY_CMD=npx --yes wrangler@latest pages deploy web --project-name=gta6-news --commit-dirty=true
+WEB_DEPLOY_CMD=npx --yes wrangler@4.127.0 pages deploy web --project-name=gta6-news --commit-dirty=true
 WEB_DEPLOY_CMD=rsync -az web/ user@host:/var/www/gta6/         # your own nginx
 ```
 
@@ -340,10 +387,11 @@ day, not on every 15-minute cycle. The page's own "compiled <time>" line is a
 daily statement, and force-pushing a branch 96 times a day is noise in the repo
 and in any CDN in front of it.
 
-Publishing is wrapped so it can never fail the run. The digest is the product;
-the page is a convenience. A deploy that dies because the network dropped
-records `Web edition: not published - <reason>` in the log and the run still
-counts as successful.
+A failed publish never stops the digest — but it IS an error. The run exits 1,
+systemd or Task Scheduler records a failure, and `HEALTHCHECK_URL` is pinged at
+`/fail`. A *partial* failure (one host up, one down) is tolerated unless the
+failed host is the one `DIGEST_WEB_URL` points at, since from then on every
+digest links a page that has stopped updating.
 
 ### About `tools/deploy_pages.py`
 
@@ -389,7 +437,12 @@ Notebookcheck, GTABoom, DualShockers.
 
 **It updates itself.** Because an install is a `git clone`, every run
 fast-forwards to `origin/main` before doing any work, so a fix pushed here
-reaches every deployment within about 15 minutes with nobody logging in.
+reaches every deployment with nobody logging in.
+
+How fast, precisely: the upstream check is rate-limited to once an hour
+(`AUTO_UPDATE_INTERVAL_S`, default 3600) and the pulled code takes effect on the
+next 15-minute cycle — so worst case is about **75 minutes**, not 15. Set
+`AUTO_UPDATE_INTERVAL_S=900` if you want it closer to a quarter of an hour.
 
 The pulled code runs on the NEXT cycle, never the current one. Re-execing into
 freshly pulled code unattended is how you get a crash loop on a machine nobody

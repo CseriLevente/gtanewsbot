@@ -131,6 +131,28 @@ def _touch_stamp() -> None:
         logger.debug("could not write the update stamp: %s", exc)
 
 
+def current_branch() -> tuple[str, str]:
+    """
+    Return (branch, error). Exactly one is non-empty; ("", "") means detached.
+
+    `git symbolic-ref --quiet` exits non-zero for a detached HEAD AND for any
+    repository error, and the two must not be conflated. The case that matters
+    is a checkout owned by a different user than the service account -- clone as
+    root, run as `gta6` -- which makes every git call fail with "detected
+    dubious ownership". Reported as a detached HEAD, that reads as a deliberate
+    pin, so `check-ready` cheerfully tells the installer their deployment is
+    intentionally frozen when in fact it is misconfigured.
+
+    A detached HEAD prints nothing under --quiet; a real error prints a message.
+    """
+    code, out = _git("symbolic-ref", "--quiet", "--short", "HEAD")
+    if code == 0 and out:
+        return out, ""
+    if out:
+        return "", out
+    return "", ""
+
+
 def current_revision() -> str:
     """Short commit of the running code, or "" if this is not a checkout."""
     code, out = _git("rev-parse", "--short", "HEAD")
@@ -186,8 +208,12 @@ def check_and_update() -> tuple[bool, str]:
     # while main was broken would be dragged back onto the broken commit on the
     # next run -- the exact opposite of what pinning is for. The same applies to
     # sitting on a feature branch and being fast-forwarded onto main's content.
-    code, current = _git("symbolic-ref", "--quiet", "--short", "HEAD")
-    if code != 0 or not current:
+    current, branch_err = current_branch()
+    if branch_err:
+        # A repository error, not a pin. The common cause is a checkout owned by
+        # someone other than the service account, which git refuses to touch.
+        return False, f"git cannot read this checkout: {branch_err[:140]}"
+    if not current:
         return False, "skipped: detached HEAD (pinned to a specific commit)"
     if current != branch:
         return False, f"skipped: on branch {current}, not {branch}"
@@ -275,11 +301,18 @@ def preflight() -> tuple[list[str], list[str]]:
 
     remote = _env("AUTO_UPDATE_REMOTE", "origin")
     branch = _env("AUTO_UPDATE_BRANCH", "main")
-    code, out = _git("symbolic-ref", "--quiet", "--short", "HEAD")
-    if code != 0 or not out:
+    cur, branch_err = current_branch()
+    if branch_err:
+        problems.append(
+            f"git cannot read this checkout: {branch_err[:160]}. Auto-update will "
+            f"fail silently on every run. If this says 'dubious ownership', the "
+            f"checkout belongs to a different user than the one running the bot: "
+            f"chown it to the service account."
+        )
+    elif not cur:
         notes.append("detached HEAD: pinned to a commit, auto-update will not move it")
-    elif out != branch:
-        notes.append(f"on branch {out}, tracking {branch}: auto-update will not run")
+    elif cur != branch:
+        notes.append(f"on branch {cur}, tracking {branch}: auto-update will not run")
 
     code, out = _git("ls-remote", "--exit-code", remote, f"refs/heads/{branch}", timeout=45)
     if code != 0:

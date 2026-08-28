@@ -467,8 +467,17 @@ def cmd_post_test(args: argparse.Namespace) -> None:
             print("DISCORD_BOT_TOKEN and DISCORD_NEWS_CHANNEL_ID must both be set.")
             sys.exit(1)
         if not args.yes:
-            print("This posts a real message to your news channel.")
-            print("Re-run with --yes to confirm.")
+            # Spelled out because POSTING_ENABLED does NOT gate this command,
+            # and both README and DEPLOY previously implied it gated everything.
+            # An installer who believed that could ping a live community by
+            # following the verification steps literally.
+            print("This posts a REAL message to your news channel. POSTING_ENABLED")
+            print("does not apply to post-test — that is the point of the command.")
+            if args.ping:
+                role = (os.environ.get("DISCORD_NEWS_ROLE_ID") or "").strip()
+                print(f"\n--ping will genuinely NOTIFY everyone holding role {role or '(unset)'}.")
+                print("Do not run this against a populated server without telling the owner.")
+            print("\nRe-run with --yes to confirm.")
             return
         if not (args.ping or args.digest):
             ok, detail = await discord_setup.send_test_message(
@@ -768,6 +777,19 @@ def cmd_build_web(args: argparse.Namespace) -> None:
         print("\nWEB_DEPLOY_CMD is not set in .env, so there is nowhere to deploy to.")
         print("See .env.example for a Cloudflare Pages and a self-hosted example.")
         sys.exit(1)
+
+    # A leading bare `python`/`python3` means "run this with the same Python I
+    # am", and taking that literally breaks in two ways that both look like the
+    # deploy tool failing rather than the interpreter being wrong:
+    #   * Ubuntu ships no `python` binary at all (only `python3`), so a .env
+    #     written on Windows fails nightly with `sh: python: not found`;
+    #   * even `python3` resolves to the SYSTEM interpreter, not the venv the
+    #     bot runs from, so the script starts and dies on a missing dependency.
+    # Substituting sys.executable removes the whole class. Anything else in
+    # WEB_DEPLOY_CMD is left exactly as the operator wrote it.
+    head, _, tail = cmd.partition(" ")
+    if head in ("python", "python3", "python.exe", "python3.exe"):
+        cmd = f'"{sys.executable}" {tail}'.strip()
 
     print(f"\ndeploying: {cmd}")
     # shell=True is deliberate: the value is operator-authored config on the

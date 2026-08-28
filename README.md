@@ -1,8 +1,8 @@
 # gta6-news-bot
 
 Posts a curated daily GTA 6 news digest to a Discord channel, plus instant alerts
-for first-party Rockstar/Take-Two news. English only. Runs on Windows from Task
-Scheduler.
+for first-party Rockstar/Take-Two news. English only. Runs from a scheduler — systemd timer on Linux, Task Scheduler on
+Windows; see DEPLOY.md.
 
 Built for a GTA 5 → GTA 6 roleplay community. The editorial rule is deliberate
 and enforced in code, not by discipline:
@@ -54,15 +54,22 @@ python -m src.main check-ready             # verify config; exits 1 on problems
 python -m src.main run --dry-run           # poll + preview, posts nothing
 ```
 
-Nothing is ever posted until you set `POSTING_ENABLED=true` in `.env`. Until
-then every command behaves as a dry run, regardless of flags.
+Nothing is posted until you set `POSTING_ENABLED=true` in `.env`: `run`,
+`digest` and `poll` all force dry-run mode while it is false, regardless of
+flags.
+
+**Three commands deliberately bypass it**, because their entire purpose is to
+prove a real message lands: `post-test --yes`, `post-test --yes --ping` (this
+genuinely notifies everyone holding the opt-in role) and `automod-apply`. Do not
+run them against a populated server without telling its owner.
 
 ### It updates itself
 
 Every run fast-forwards to `origin/main` before doing any work, so fixes pushed
-here reach an install within about 15 minutes without anyone logging into it.
-The pulled code takes effect on the next cycle, and `requirements.txt` changes
-install automatically.
+here reach an install without anyone logging into it. The upstream check is
+rate-limited to once an hour (`AUTO_UPDATE_INTERVAL_S`, default 3600) and the
+pulled code takes effect on the next 15-minute cycle, so worst case is about
+**75 minutes**. `requirements.txt` changes install automatically.
 
 It skips rather than surprises you: local edits, a diverged branch, a detached
 HEAD (i.e. a deliberate pin), a feature branch, or a non-checkout all leave the
@@ -138,10 +145,18 @@ Task Scheduler runs `run` every 15 minutes; the bot decides whether to post. All
 timing lives in `src/clock.py`.
 
 ```bash
-schtasks /create /tn "gta6-news-bot" /xml infra\gta6-news-bot-task.xml
+python -m src.main make-task
 ```
 
-Edit the `<Command>`, `<WorkingDirectory>` and `<UserId>` in that file first.
+```bash
+schtasks /create /tn "gta6-news-bot" /xml infra\gta6-news-bot-task.xml /f
+```
+
+**Generate the XML, do not hand-edit it.** It is gitignored (it contains your
+hostname, username and paths) so it does not exist on a fresh clone, and it must
+stay UTF-16 with a BOM — a text editor saving it as UTF-8 makes every run die
+with `0x8007010B`. `make-task` handles both. Full detail in
+[DEPLOY.md](DEPLOY.md#windows).
 
 Three things that will otherwise cost you an evening:
 
@@ -178,7 +193,7 @@ seconds.
   not, because that circumvents an access control the owner enabled and
   Rockstar's ToS prohibits automated access. The feed is shipped disabled and a
   Google News `site:` query is used instead.
-* Three feeds are marked `untested` in config — `check-ready` warns about them.
+* 
 * LLM curation exists (`src/llm.py`) but is OFF by default and has never been
   called live — set `LLM_CURATION_ENABLED=true` and `ANTHROPIC_API_KEY`. Any
   failure falls back to heuristic clustering, so the digest still posts.
