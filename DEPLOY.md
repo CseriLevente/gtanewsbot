@@ -459,6 +459,81 @@ git pull
 The schema is created with `CREATE TABLE IF NOT EXISTS` and new columns are
 added idempotently, so an existing database is picked up as-is.
 
+## Handing this to someone else
+
+If another person or company installs this for you, two things need thought
+before you send them anything.
+
+### 1. The only secret in `.env` is `DISCORD_BOT_TOKEN`
+
+Everything else in that file is configuration: channel and role IDs are not
+secrets (they are visible to any member with Developer Mode on), and the
+thresholds and URLs are harmless.
+
+That one token is worth taking seriously, because it does not expire and it
+grants, in the news channel: read history, send messages, embed links, and
+**MENTION_EVERYONE** — which is how the non-mentionable ping role works. Anyone
+holding it can post as your bot and mass-ping your community. It cannot kick,
+ban, or change server settings.
+
+Whoever RUNS the bot must have the token; that is unavoidable for a managed
+deployment. The questions worth asking are narrower:
+
+* **Did it travel over a channel that keeps history?** Discord DMs, email, and
+  support tickets all persist and get breached later. If so, rotate.
+* **Does the installer actually need it?** A provider who only rents you a box
+  does not. Someone configuring the bot does.
+* **What happens when the engagement ends?** The token keeps working. Rotate.
+
+**Rotating takes about a minute and instantly invalidates the old token:**
+Discord Developer Portal → your application → Bot → **Reset Token**. Put the new
+value in the server's `.env` and restart nothing — the next scheduled run picks
+it up, because each run reads `.env` fresh.
+
+Do it *after* the installer has finished, so you are not handing over a
+credential you are about to invalidate.
+
+### 2. Do not give anyone your GitHub push rights
+
+`WEB_DEPLOY_CMD=python tools/publish_web.py` publishes to **both** hosts, and on
+a fresh server **neither can authenticate**: GitHub Pages needs push access to
+your repo, and Cloudflare needs a `wrangler login`. Left as-is, every evening's
+run fails the web publish, exits non-zero, and — if you wired up the dead-man
+switch — pages you daily.
+
+Note that **self-update does not need any of this**: it only fetches from a
+public repo, read-only. It is safe to hand over.
+
+Pick one of these for the server:
+
+```bash
+# a) Simplest: the server does not publish the site at all.
+#    Keep building and deploying it from a machine that already has the
+#    credentials, on whatever schedule suits you.
+WEB_DEPLOY_CMD=
+```
+
+```bash
+# b) Cloudflare with a SCOPED token, so nobody gets your login.
+#    Create it at dash.cloudflare.com -> My Profile -> API Tokens, with the
+#    "Cloudflare Pages:Edit" permission on that one account and nothing else.
+#    Wrangler reads these from the environment; this is the documented CI path,
+#    so confirm it with one manual `build-web --deploy` before trusting it.
+GTA6_PUBLISH_TARGETS=cloudflare
+CLOUDFLARE_API_TOKEN=<scoped token>
+CLOUDFLARE_ACCOUNT_ID=<account id>
+```
+
+```bash
+# c) GitHub Pages with a fine-grained PAT limited to this ONE repository,
+#    Contents: read and write. Not your account password, and not a classic
+#    token with repo-wide scope.
+GTA6_PUBLISH_TARGETS=github
+```
+
+Whichever you choose, `git remote set-url` on the server should use a credential
+that can only touch this repository.
+
 ## If something goes wrong
 
 ```bash
