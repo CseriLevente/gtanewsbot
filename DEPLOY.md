@@ -336,11 +336,73 @@ Notebookcheck, GTABoom, DualShockers.
 
 ## Upgrading
 
+**It updates itself.** Because an install is a `git clone`, every run
+fast-forwards to `origin/main` before doing any work, so a fix pushed here
+reaches every deployment within about 15 minutes with nobody logging in.
+
+The pulled code runs on the NEXT cycle, never the current one. Re-execing into
+freshly pulled code unattended is how you get a crash loop on a machine nobody
+is watching; waiting one cycle costs nothing and cannot spin.
+
+If `requirements.txt` changed in the pull, dependencies are installed
+automatically. If that install fails, the run says so loudly rather than
+limping on.
+
+`python -m src.main status` prints the running commit and whether tracking is on.
+
+### What it refuses to do
+
+Each of these makes the update a no-op instead of a surprise:
+
+| Situation | Behaviour |
+|---|---|
+| Working tree has local edits | Skips. A developer's changes outrank shipping a news bot. |
+| Branch has diverged from upstream | Skips. `--ff-only` is the entire policy: it can only move forward along published history — never merge, rebase, or discard a commit. |
+| Not a git checkout (zip, copied folder) | Skips silently. |
+| Remote unreachable | Reports and carries on with the code it has. |
+
+Untracked files (a stray log, your `.env`) do **not** block an update — otherwise
+one scratch file would freeze a deployment forever.
+
+`.env` is gitignored and the database lives outside the repo, so a pull never
+touches your configuration or your history.
+
+### The trust model, stated plainly
+
+Auto-update means every deployment executes whatever is on `origin/main`. That
+is the normal bargain for self-hosted software and it is the point of the
+feature — but it makes the repo owner's GitHub account a production credential
+for every install. Protect it accordingly: two-factor on, and no unreviewed
+pushes to `main`.
+
+### Turning it off, and rolling back
+
+```bash
+AUTO_UPDATE=false
+```
+
+To pin a deployment to a known-good commit while you fix `main`:
+
+```bash
+AUTO_UPDATE=false
+```
+
+```bash
+git checkout <good-commit-sha>
+```
+
+Then set `AUTO_UPDATE=true` again once `main` is healthy — the next run
+fast-forwards back onto the branch tip. (A detached HEAD is left alone by the
+updater, so the pin holds even if you forget the flag.)
+
+### Manual upgrade
+
 ```bash
 git pull
+```
+
+```bash
 .venv/bin/pip install -r requirements.txt
-.venv/bin/python -m src.main check-ready
-sudo systemctl restart gta6-news-bot.timer     # Linux
 ```
 
 The schema is created with `CREATE TABLE IF NOT EXISTS` and new columns are

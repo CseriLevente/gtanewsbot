@@ -173,6 +173,14 @@ def cmd_status(args: argparse.Namespace) -> None:
     async def _run() -> None:
         conn, cfg = await _open()
         try:
+            from src import selfupdate
+            rev = selfupdate.current_revision()
+            if rev:
+                auto = (os.environ.get("AUTO_UPDATE") or "true").strip().casefold()
+                on = auto not in ("0", "false", "no", "off")
+                print(f"Version:  {rev} "
+                      f"({'tracking ' + (os.environ.get('AUTO_UPDATE_BRANCH') or 'main')
+                         if on else 'auto-update OFF'})")
             print(f"Clock:    {describe_now()}")
             ok, msg = check_local_clock()
             print(f"          {'OK' if ok else 'WARN'} — {msg}")

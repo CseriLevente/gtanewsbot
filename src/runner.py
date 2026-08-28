@@ -43,7 +43,8 @@ import sys
 import time
 from dataclasses import dataclass, field
 
-from src import canonical, cluster, credibility, digest, discord_client, feeds, llm, storage
+from src import (canonical, cluster, credibility, digest, discord_client, feeds,
+                 llm, selfupdate, storage)
 from src.clock import local_date_key, local_now, should_post_digest
 
 logger = logging.getLogger(__name__)
@@ -92,6 +93,9 @@ def effective_dry_run(requested: bool) -> tuple[bool, str | None]:
 
 @dataclass
 class RunReport:
+    revision: str = ""
+    updated: bool = False
+    update_detail: str = ""
     poll: feeds.PollSummary | None = None
     instant_sent: int = 0
     instant_details: list[str] = field(default_factory=list)
@@ -107,6 +111,10 @@ class RunReport:
 
     def summary_lines(self) -> list[str]:
         out: list[str] = []
+        if self.revision:
+            out.append(f"Version: {self.revision}")
+        if self.update_detail:
+            out.append(f"Self-update: {self.update_detail}")
         if self.poll:
             out.append(f"Feeds: {self.poll.health_line()}")
             out.append(f"New items ingested: {self.poll.new_items}")
@@ -740,6 +748,20 @@ async def run_once(conn, cfg: dict, *, dry_run: bool = False, force_digest: bool
                 os.environ.get("USERNAME", "?"),
                 os.environ.get("LOCALAPPDATA", "?"),
                 os.getcwd())
+
+    # Track the repo before anything else, so a deployment picks up fixes
+    # without anyone logging into it. The pulled code runs on the NEXT cycle,
+    # never this one -- re-execing into freshly pulled code unattended is how
+    # you get a crash loop nobody is watching.
+    #
+    # Failures here are recorded and then ignored: being unable to update must
+    # never stop the bot doing the job it can already do with the code it has.
+    try:
+        report.updated, report.update_detail = selfupdate.check_and_update()
+        report.revision = selfupdate.current_revision()
+    except Exception as exc:               # noqa: BLE001 - never fatal
+        logger.exception("self-update stage failed")
+        report.update_detail = f"error: {exc}"
 
     # NOTE: an in-process write-persistence canary was tried here and is
     # useless for this failure — the scheduled process reads back its own

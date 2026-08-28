@@ -38,7 +38,15 @@ uses the server's local clock, so the server timezone matters).
 
 ## Quick start
 
+**Install with `git clone`, not a zip download** — the bot keeps itself up to
+date by fast-forwarding this repo, and a zip has nothing to track.
+
 ```bash
+git clone https://github.com/CseriLevente/gtanewsbot.git gta6-news-bot
+```
+
+```bash
+cd gta6-news-bot
 pip install -r requirements.txt          # feedparser is the only new dependency
 cp .env.example .env                     # then edit it
 python -m src.main init-db                # create the DB, register feeds
@@ -48,6 +56,25 @@ python -m src.main run --dry-run           # poll + preview, posts nothing
 
 Nothing is ever posted until you set `POSTING_ENABLED=true` in `.env`. Until
 then every command behaves as a dry run, regardless of flags.
+
+### It updates itself
+
+Every run fast-forwards to `origin/main` before doing any work, so fixes pushed
+here reach an install within about 15 minutes without anyone logging into it.
+The pulled code takes effect on the next cycle, and `requirements.txt` changes
+install automatically.
+
+It skips rather than surprises you: local edits, a diverged branch, a detached
+HEAD (i.e. a deliberate pin), a feature branch, or a non-checkout all leave the
+working copy alone. `.env` is gitignored and the database lives outside the repo,
+so a pull never touches your config or history. `python -m src.main status`
+shows the running commit.
+
+Worth understanding before you deploy it: this means the install runs whatever
+is on `origin/main`, so the repo owner's GitHub account is effectively a
+production credential. Set `AUTO_UPDATE=false` if you would rather upgrade by
+hand. Full detail, including how to pin and roll back, is in
+**[DEPLOY.md](DEPLOY.md#upgrading)**.
 
 ### Going live
 
