@@ -70,6 +70,15 @@ class DigestEntry:
     # Every item id in the cluster. All are marked sent, not just the one
     # linked, otherwise the unused copies resurface tomorrow as "new" stories.
     member_ids: list[int] = field(default_factory=list)
+    # Unix seconds, rendered as Discord's <t:N:R> relative stamp. Without it
+    # nothing in the digest carried a date, so a story that broke 30 hours ago
+    # read exactly like one from this afternoon.
+    published: int | None = None
+    # True when `url` is the outlet's front page rather than the article,
+    # because the only address we had was an aggregator redirect. Marked in the
+    # rendering so the link never pretends to be the story itself. An empty
+    # `url` means we could not honestly link anything.
+    homepage_link: bool = False
 
 
 def _truncate(text: str, limit: int) -> str:
@@ -135,13 +144,30 @@ def _web_url() -> str | None:
 def _entry_line(entry: DigestEntry) -> str:
     prefix = _LABEL_PREFIX.get(entry.label, "🔵 **Report**")
     title = _escape_markdown_link_text(_truncate(entry.title, 200))
-    line = f"{prefix} · [{title}]({entry.url})"
+    if entry.url:
+        line = f"{prefix} · [{title}]({entry.url})"
+    else:
+        # No honest destination. Better an unlinked headline than a link that
+        # lands on a consent wall: on a phone, a tap that goes nowhere useful is
+        # worse than no tap at all, and the outlet is still named below.
+        line = f"{prefix} · **{title}**"
     attribution = sanitise_attribution(entry.source_name)
+    if entry.url and entry.homepage_link:
+        attribution += " (front page)"
     if entry.other_outlets:
         shown = [sanitise_attribution(o) for o in entry.other_outlets[:3]]
         more = len(entry.other_outlets) - len(shown)
         also = ", ".join(shown) + (f" +{more}" if more > 0 else "")
         attribution += f" · also {also}"
+    if entry.published:
+        # <t:N:R> renders as "3 hours ago" in each reader's own timezone and
+        # locale, which no fixed string can do for a server whose members are
+        # spread across several. Without it nothing in the digest carried a
+        # date at all, so a story that broke 30 hours ago read exactly like one
+        # from this afternoon -- and on a day dominated by one event, several
+        # slots were expired "when to watch" pieces for a stream that had
+        # already aired.
+        attribution += f" · <t:{int(entry.published)}:R>"
     line += f"\n-# {attribution}"
     if entry.summary:
         line += f"\n{_truncate(entry.summary, 300)}"
@@ -467,4 +493,5 @@ def entry_from_row(row, *, label_override: str | None = None) -> DigestEntry:
         source_name=row["source_name"] or row["source_domain"] or "unknown",
         label=label,
         summary=None,  # milestone 2: LLM summary goes here
+        published=row["published_epoch"],
     )

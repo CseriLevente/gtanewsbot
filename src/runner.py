@@ -501,16 +501,28 @@ def build_digest_entries(rows, cfg: dict) -> tuple[list[digest.DigestEntry], lis
             o for o in c.outlets
             if o != (chosen.get("source_name") or chosen.get("source_domain"))
         ]
+        # Same rule as the web edition, from the same function. The digest is
+        # the surface where a bad link costs most -- it is a tap on a phone --
+        # yet it was still emitting 300-character news.google.com redirects that
+        # land on a consent wall, because the fix originally lived only in the
+        # web builder.
+        href, homepage = canonical.link_target(
+            chosen.get("url_canonical") or "",
+            tier=int(chosen.get("tier") or 9),
+            domain=rep_domain,
+        )
         entry = digest.DigestEntry(
             item_id=int(chosen["id"]),
             title=chosen.get("title") or "",
-            url=chosen.get("url_canonical") or "",
+            url=href,
+            homepage_link=homepage,
             source_name=chosen.get("source_name") or chosen.get("source_domain") or "unknown",
             label=label or _label_for(chosen),
             other_outlets=others,
             # Every member is marked sent, not just the linked one — otherwise
             # the unused copies resurface tomorrow as separate "new" stories.
             member_ids=[int(m["id"]) for m in c.members],
+            published=chosen.get("published_epoch"),
         )
         entries.append(entry)
 

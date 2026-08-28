@@ -455,3 +455,62 @@ def test_managed_role_is_rejected_as_a_ping_target():
                "mentionable": False, "tags": {}}
     assert not ok_role.get("managed")
     assert ds.PERMS["MENTION_EVERYONE"] == 131072
+
+
+# ---------------------------------------------------------------------------
+# Staleness must be visible
+#
+# Nothing in the digest carried a date, so a 30-hour-old story read exactly like
+# one from this afternoon. On a day dominated by one event that mattered: several
+# slots were "when to watch" pieces for a stream that had already aired.
+# ---------------------------------------------------------------------------
+
+def test_a_story_with_a_timestamp_renders_a_relative_stamp():
+    e = entry(1)
+    e.published = 1_787_000_000
+    desc = render_digest([e], health_line="h", date_label="2026-08-27")["embeds"][0]["description"]
+    assert "<t:1787000000:R>" in desc, (
+        "Discord's <t:N:R> localises per reader; a fixed string cannot")
+
+
+def test_a_story_without_a_timestamp_renders_no_stamp_and_no_stray_separator():
+    e = entry(1)
+    e.published = None
+    desc = render_digest([e], health_line="h", date_label="2026-08-27")["embeds"][0]["description"]
+    assert "<t:" not in desc
+    assert "· ·" not in desc, "an empty timestamp left a dangling separator"
+
+
+# ---------------------------------------------------------------------------
+# The digest must never hand a member an aggregator redirect
+#
+# The web edition got this rule first and the digest was left behind — the
+# surface where a bad link costs most, since it is a tap on a phone rather than
+# a click on a page. Both now share canonical.link_target().
+# ---------------------------------------------------------------------------
+
+def test_an_unlinkable_story_renders_unlinked_rather_than_badly_linked():
+    e = entry(1)
+    e.url = ""
+    desc = render_digest([e], health_line="h", date_label="d")["embeds"][0]["description"]
+    assert e.title in desc, "the headline must survive even with no link"
+    assert "](" not in desc, "rendered a markdown link with no destination"
+
+
+def test_a_front_page_fallback_says_so():
+    e = entry(1)
+    e.url = "https://ign.com/"
+    e.homepage_link = True
+    desc = render_digest([e], health_line="h", date_label="d")["embeds"][0]["description"]
+    assert "(front page)" in desc, (
+        "a homepage link must not pose as a link to the article")
+
+
+def test_the_shared_link_rule_is_the_one_the_web_edition_uses():
+    from src import canonical
+    assert canonical.link_target("https://news.google.com/rss/articles/X",
+                                 tier=2, domain="ign.com") == ("https://ign.com/", True)
+    assert canonical.link_target("https://news.google.com/rss/articles/X",
+                                 tier=9, domain="unknown.example") == ("", False)
+    assert canonical.link_target("https://ign.com/articles/x",
+                                 tier=2, domain="ign.com") == ("https://ign.com/articles/x", False)

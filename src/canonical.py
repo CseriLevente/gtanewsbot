@@ -301,3 +301,37 @@ def source_domain(url: str) -> str:
     """Registrable-ish host for tier lookup: lowercased, no www."""
     host = (urlsplit(url).hostname or "").casefold()
     return host[4:] if host.startswith("www.") else host
+
+
+# Highest tier number we will still send a reader to the outlet's homepage for.
+# Above this the domain is not in the credibility list at all, and an unlabelled
+# homepage link to an outlet we cannot vouch for is worth less than a plain name.
+HOMEPAGE_TIER_MAX = 3
+
+
+def link_target(url: str, *, tier: int, domain: str) -> tuple[str, bool]:
+    """
+    Decide where a story may point. Shared by the digest and the web edition.
+
+    Returns (href, is_homepage_fallback). An empty href means "do not link".
+
+    Most items reach the bot through Google News, whose RSS links are opaque
+    redirects: the post-2024 blobs contain no recoverable address, and following
+    one lands on consent.google.com from the EU. Emitting such a URL is worse
+    than emitting none, because it looks like a link to the outlet named beside
+    it and is not one.
+
+    This lived only in the web builder at first, so the fix reached the website
+    and left the Discord digest still handing members 300-character Google
+    redirects -- the surface where a bad link is most expensive, since it is a
+    tap on a phone rather than a click on a page.
+
+    In order: a real publisher URL is used as-is; a wrapper from an outlet we
+    recognise falls back to that outlet's front page; anything else is not a
+    link at all.
+    """
+    if url and not is_wrapper(url):
+        return url, False
+    if domain and tier <= HOMEPAGE_TIER_MAX:
+        return "https://" + domain + "/", True
+    return "", False
